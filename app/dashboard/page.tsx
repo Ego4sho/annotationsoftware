@@ -1,30 +1,21 @@
 'use client'
 
-import { DashboardUI } from '@/components/dashboard/DashboardUI'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { DashboardUI } from './components/DashboardUI'
 import { useDashboard } from '@/hooks/dashboard/useDashboard'
 
 export default function DashboardPage() {
-  const {
-    adminNotes,
-    statusData,
-    handleAddNote,
-    handleEditNote,
-    handleDeleteNote,
-    handleLabel,
-    handleRate,
-    handleValidate
-  } = useDashboard()
+  const router = useRouter()
+  const dashboard = useDashboard()
 
-  return (
-    <DashboardUI
-      adminNotes={adminNotes}
-      statusData={statusData}
-      handleAddNote={handleAddNote}
-      handleEditNote={handleEditNote}
-      handleDeleteNote={handleDeleteNote}
-      handleLabel={handleLabel}
-      handleRate={handleRate}
-      handleValidate={handleValidate}
-    />
-  )
+  useEffect(() => {
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
+    if (!isAuthenticated) {
+      router.push('/')
+    }
+  }, [router])
+
+  return <DashboardUI {...dashboard} />
 }

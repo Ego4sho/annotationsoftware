@@ -1,6 +1,10 @@
 import { AdminNote, StatusData } from '@/types/dashboard'
+import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 export const useDashboard = () => {
+  const router = useRouter();
+
   const adminNotes: AdminNote[] = [
     { id: 1, author: 'Admin', timestamp: '2023-06-15 10:30', title: 'System Update', content: 'We will be performing a system update on June 20th at 2:00 AM EST. Please save your work before this time.' },
     { id: 2, author: 'Sarah', timestamp: '2023-06-14 15:45', title: 'New Feature Release', content: 'We\'re excited to announce the release of our new AI-assisted labeling feature. Check it out in the Label section!' },
@@ -28,8 +32,8 @@ export const useDashboard = () => {
   }
   
   const handleLabel = () => {
-    console.log('Label clicked')
-  }
+    router.push('/labelinginterface');
+  };
   
   const handleRate = () => {
     console.log('Rate clicked')

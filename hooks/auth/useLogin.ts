@@ -11,10 +11,13 @@ export const useLogin = () => {
     setError(undefined)
     
     try {
+      // Mock authentication - replace with real auth later
       if (email === 'google') {
         // Handle Google sign in
         console.log('Google sign in')
         await new Promise(resolve => setTimeout(resolve, 1500))
+        // Set some auth state/token here
+        localStorage.setItem('isAuthenticated', 'true')
         router.push('/dashboard')
         return
       }
@@ -22,6 +25,8 @@ export const useLogin = () => {
       // Regular email/password sign in
       await new Promise(resolve => setTimeout(resolve, 1500))
       if (email === 'user@example.com' && password === 'password') {
+        // Set some auth state/token here
+        localStorage.setItem('isAuthenticated', 'true')
         router.push('/dashboard')
       } else {
         setError('Invalid email or password')

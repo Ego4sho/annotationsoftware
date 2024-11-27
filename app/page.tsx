@@ -1,9 +1,9 @@
 "use client"
 
-import { HomePageUI } from '../components/HomePageUI'
-import { useHomePage } from '../hooks/useHomePage'
+import { HomePageUI } from '@/components/HomePageUI'
+import { useHomePage } from '@/hooks/useHomePage'
 
-export default function HomePage() {
+export default function Home() {
   const {
     isLoading,
     error,

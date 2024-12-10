@@ -1,4 +1,5 @@
-import { Collection, Project, File } from '@/app/collections/types'
+import { Collection as FirebaseCollection, Project as FirebaseProject } from '@/types/upload';
+import { Timestamp } from 'firebase/firestore';
 
 export type Status = 'not-started' | 'in-progress' | 'completed'
 
@@ -6,6 +7,27 @@ export interface Progress {
   labeling: Status
   rating: Status
   validated: Status
+}
+
+export interface ProjectFile {
+  id: string;
+  projectId: string;
+  userId: string;
+  type: 'video' | 'audio' | 'motion';
+  fileName: string;
+  originalName: string;
+  fileUrl: string;
+  size: number;
+  uploadedAt: Timestamp;
+  status: 'ready' | 'processing' | 'error';
+  processingProgress?: number;
+  error?: string;
+  metadata?: {
+    duration?: number;
+    frameRate?: number;
+    resolution?: string;
+    format?: string;
+  };
 }
 
 export interface File {
@@ -16,26 +38,45 @@ export interface File {
 }
 
 export interface Collection {
-  id: string
-  title: string
-  description: string
-  createdDate: Date
-  videoFiles: File[]
-  audioFiles: File[]
-  bvhFile: File | null
-  auxFiles: {
-    [key: number]: File | null
-  }
-  progress: Progress
-  currentProjectId?: string
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  status: 'incomplete' | 'processing' | 'ready' | 'error';
+  files: {
+    video: ProjectFile[];
+    audio: ProjectFile[];
+    motion: ProjectFile[];
+  };
+  progress: Progress;
+  currentProjectId?: string;
+  deleted?: boolean;
+  // Legacy file structures
+  videoFiles?: ProjectFile[];
+  audioFiles?: ProjectFile[];
+  motionFiles?: ProjectFile[];
+  projectFiles?: ProjectFile[];
+  projectId?: string;
 }
 
 export interface Project {
-  id: string
-  title: string
-  description: string
-  createdDate: Date
-  collections: Collection[]
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  status: 'incomplete' | 'processing' | 'ready' | 'error';
+  fileCount: {
+    video: number;
+    audio: number;
+    motion: number;
+  };
+  totalSize: number;
+  collections?: Collection[];
+  deleted?: boolean;
 }
 
 export interface UploadState {
@@ -68,4 +109,5 @@ export interface UploadUIProps extends UploadState {
   onAddingProjectToggle: () => void
   onNewProjectDataChange: (data: Partial<Omit<Project, 'id' | 'collections'>>) => void
   onAddNewCollection: () => void
+  onEditProject: (projectId: string, data: { title: string; name: string; description: string }) => void
 } 

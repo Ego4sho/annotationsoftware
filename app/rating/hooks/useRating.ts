@@ -182,7 +182,9 @@ export const useRating = () => {
   };
 
   const handleAddRating = () => {
+    // Only proceed if we have a selected step and a rating name
     if (state.selectedStep && state.newRating.name) {
+      // Create the new rating
       const newRating: Rating = {
         id: Date.now().toString(),
         name: state.newRating.name,
@@ -190,20 +192,30 @@ export const useRating = () => {
         scaleEnd: state.newRating.scaleEnd
       };
 
-      const updatedStep: Step = {
+      // Create updated step with new rating
+      const updatedStep = {
         ...state.selectedStep,
         ratings: [...state.selectedStep.ratings, newRating]
       };
 
+      // Update state
       setState(prev => ({
         ...prev,
         stepTypes: prev.stepTypes.map(step => 
-          step.id === updatedStep.id ? updatedStep : step
+          step.id === state.selectedStep?.id ? updatedStep : step
         ),
         selectedStep: updatedStep,
-        isAddingRating: false,
-        newRating: { name: '', scaleStart: 1, scaleEnd: 10 }
+        isAddingRating: false,  // Close the dialog
+        newRating: { name: '', scaleStart: 1, scaleEnd: 10 }  // Reset the form
       }));
+
+      // Log for debugging
+      console.log('Rating added:', newRating);
+      console.log('Updated step:', updatedStep);
+    } else {
+      console.log('Cannot add rating: No step selected or missing rating name');
+      console.log('Selected step:', state.selectedStep);
+      console.log('New rating:', state.newRating);
     }
   };
 
@@ -234,6 +246,63 @@ export const useRating = () => {
     setState(prev => ({ ...prev, editingRating: rating }));
   };
 
+  const setNewRating = (rating: { name: string; scaleStart: number; scaleEnd: number; }) => {
+    setState(prev => ({
+      ...prev,
+      newRating: rating
+    }));
+  };
+
+  const closeAddRatingDialog = () => {
+    setState(prev => ({
+      ...prev,
+      isAddingRating: false,
+      newRating: { name: '', scaleStart: 1, scaleEnd: 10 } // Reset form
+    }));
+  };
+
+  const toggleAddRatingDialog = () => {
+    setState(prev => ({
+      ...prev,
+      isAddingRating: !prev.isAddingRating
+    }));
+  };
+
+  const handleRowReorder = (fromIndex: number, toIndex: number) => {
+    setState(prev => {
+      // Create a copy of the selected channels array
+      const newSelectedChannels = [...prev.selectedChannels];
+      
+      // Remove the channel from the old position and insert it at the new position
+      const [movedChannel] = newSelectedChannels.splice(fromIndex, 1);
+      newSelectedChannels.splice(toIndex, 0, movedChannel);
+      
+      // Return new state with reordered channels
+      return {
+        ...prev,
+        selectedChannels: newSelectedChannels
+      };
+    });
+  };
+
+  // Add this new function to handle select/deselect all
+  const handleSelectAllChannels = () => {
+    setState(prev => {
+      // If all channels are selected, deselect all
+      if (prev.selectedChannels.length === allChannels.length) {
+        return {
+          ...prev,
+          selectedChannels: [] // Clear all selections
+        };
+      }
+      // Otherwise, select all channels
+      return {
+        ...prev,
+        selectedChannels: [...allChannels]
+      };
+    });
+  };
+
   return {
     state,
     videoRef,
@@ -260,5 +329,11 @@ export const useRating = () => {
     handleEditRating,
     setEditingRating,
     editingRating: state.editingRating,
+    setNewRating,
+    newRating: state.newRating,
+    closeAddRatingDialog,
+    toggleAddRatingDialog,
+    handleRowReorder,
+    handleSelectAllChannels,
   };
 }; 

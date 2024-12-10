@@ -1,5 +1,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { auth } from '@/lib/firebase/config'
+import { 
+  signInWithEmailAndPassword, 
+  signInWithPopup, 
+  GoogleAuthProvider,
+  browserPopupRedirectResolver
+} from 'firebase/auth'
 
 export const useLogin = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -11,28 +18,39 @@ export const useLogin = () => {
     setError(undefined)
     
     try {
-      // Mock authentication - replace with real auth later
       if (email === 'google') {
-        // Handle Google sign in
-        console.log('Google sign in')
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        // Set some auth state/token here
-        localStorage.setItem('isAuthenticated', 'true')
-        router.push('/dashboard')
-        return
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({
+          prompt: 'select_account'
+        });
+        
+        try {
+          const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+          if (result.user) {
+            router.push('/dashboard');
+          }
+        } catch (popupError: any) {
+          if (popupError.code === 'auth/popup-closed-by-user') {
+            setError('Sign-in was cancelled. Please try again.');
+          } else {
+            console.error('Google sign-in error:', popupError);
+            setError('Failed to sign in with Google. Please try again.');
+          }
+          return;
+        }
+        return;
       }
 
       // Regular email/password sign in
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      if (email === 'user@example.com' && password === 'password') {
-        // Set some auth state/token here
-        localStorage.setItem('isAuthenticated', 'true')
-        router.push('/dashboard')
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/dashboard')
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password');
       } else {
-        setError('Invalid email or password')
+        setError(err.message || 'Failed to sign in');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
       setIsLoading(false)
     }

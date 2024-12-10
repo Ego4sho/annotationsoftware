@@ -6,16 +6,25 @@ import { DashboardUI } from './components/DashboardUI'
 import { useDashboard } from '@/hooks/dashboard/useDashboard'
 
 export default function DashboardPage() {
+  const {
+    adminNotes,
+    statusData,
+    handleAddNote,
+    handleEditNote,
+    handleDeleteNote
+  } = useDashboard()
+
+  console.log('Current admin notes:', adminNotes)
+
   const router = useRouter()
-  const dashboard = useDashboard()
 
-  useEffect(() => {
-    // Check if user is authenticated
-    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
-    if (!isAuthenticated) {
-      router.push('/')
-    }
-  }, [router])
-
-  return <DashboardUI {...dashboard} />
+  return (
+    <DashboardUI 
+      adminNotes={adminNotes}
+      statusData={statusData}
+      handleAddNote={handleAddNote}
+      handleEditNote={handleEditNote}
+      handleDeleteNote={handleDeleteNote}
+    />
+  )
 }

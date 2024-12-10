@@ -1,15 +1,15 @@
-import { Collection, Progress } from '../types'
+import { Collection, ProgressCategory, ProgressCounts } from '../types'
 
-export const getProgressCounts = (collections: Collection[], category: keyof Progress): string => {
-  const total = collections.length
-  const notStarted = collections.filter(c => c.progress[category] === 'not-started').length
-  const inProgress = collections.filter(c => c.progress[category] === 'in-progress').length
-  const completed = collections.filter(c => c.progress[category] === 'completed').length
+export const getProgressCounts = (collections: Collection[], category: ProgressCategory): ProgressCounts => {
+  const total = collections?.length || 0
+  const completed = collections?.filter(c => c.progress[category] === 'completed').length || 0
+  const inProgress = collections?.filter(c => c.progress[category] === 'in-progress').length || 0
+  const notStarted = total - completed - inProgress
 
-  const parts = []
-  if (notStarted > 0) parts.push(`${notStarted}/${total} Not Started`)
-  if (inProgress > 0) parts.push(`${inProgress}/${total} In Progress`)
-  if (completed > 0) parts.push(`${completed}/${total} Completed`)
-
-  return parts.join(' • ')
+  return {
+    total,
+    completed,
+    inProgress,
+    notStarted
+  }
 } 

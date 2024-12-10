@@ -24,14 +24,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ status }) => {
   }
 
   return (
-    <div className="space-y-0.5">
-      <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+    <div className="space-y-1">
+      <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
         <div 
           className={`h-full ${colors[status].bg} transition-all duration-300`}
           style={{ width: colors[status].width }}
         />
       </div>
-      <span className="text-[10px] text-gray-400">{colors[status].text}</span>
     </div>
   )
 } 

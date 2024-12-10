@@ -14,18 +14,35 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from "@/components/ui/collapsible"
+import Link from 'next/link'
+import { AddNoteDialog } from './AddNoteDialog'
+import { useState } from 'react'
+import { AdminNote } from '@/types/dashboard'
 
 export const DashboardUI: React.FC<DashboardProps> = ({
   adminNotes,
   statusData,
   handleAddNote,
   handleEditNote,
-  handleDeleteNote,
-  handleLabel,
-  handleRate,
-  handleValidate
+  handleDeleteNote
 }) => {
   const router = useRouter()
+  const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
+
+  console.log('DashboardUI received notes:', adminNotes)
+
+  const handleAddNoteSave = (note: { title: string; content: string }) => {
+    const newNote: AdminNote = {
+      id: Date.now().toString(),
+      title: note.title,
+      content: note.content,
+      timestamp: new Date().toLocaleString(),
+      author: 'Current User'
+    }
+    console.log('Creating new note:', newNote)
+    handleAddNote(newNote)
+    setIsAddNoteOpen(false)
+  }
 
   return (
     <div className="flex h-screen bg-[#1A1A1A] text-white overflow-hidden">
@@ -43,7 +60,7 @@ export const DashboardUI: React.FC<DashboardProps> = ({
               rightLabel="Finished"
               rightValue={statusData.label.finished}
               buttonLabel="Label"
-              onClick={() => router.push('/labelinginterface')}
+              onClick={() => router.push('/labeling')}
               filePrefix="Files"
             />
             <StatusCard
@@ -53,7 +70,7 @@ export const DashboardUI: React.FC<DashboardProps> = ({
               rightLabel="Rated"
               rightValue={statusData.rate.rated}
               buttonLabel="Rate"
-              onClick={() => router.push('/ratinginterface')}
+              onClick={() => router.push('/rating')}
               filePrefix="Files"
             />
             <StatusCard
@@ -63,7 +80,7 @@ export const DashboardUI: React.FC<DashboardProps> = ({
               rightLabel="Validated"
               rightValue={statusData.validate.validated}
               buttonLabel="Validate"
-              onClick={() => router.push('/validationinterface')}
+              onClick={() => router.push('/validate')}
               filePrefix="Files"
             />
           </div>
@@ -75,8 +92,8 @@ export const DashboardUI: React.FC<DashboardProps> = ({
                 <span>Admin Notes</span>
                 <Button 
                   size="sm" 
-                  onClick={handleAddNote}
-                  className="bg-black hover:bg-black/80"
+                  onClick={() => setIsAddNoteOpen(true)}
+                  className="bg-transparent hover:bg-white/10"
                 >
                   <Plus className="h-4 w-4 mr-2 text-white" />
                   <span className="text-white">Add Note</span>
@@ -114,6 +131,13 @@ export const DashboardUI: React.FC<DashboardProps> = ({
           </Card>
         </div>
       </div>
+
+      {/* Add Note Dialog */}
+      <AddNoteDialog
+        isOpen={isAddNoteOpen}
+        onClose={() => setIsAddNoteOpen(false)}
+        onSave={handleAddNoteSave}
+      />
     </div>
   )
 } 

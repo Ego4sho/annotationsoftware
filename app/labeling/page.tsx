@@ -1,7 +1,7 @@
 'use client'
 
 import { LabelingInterfaceUI } from './components/LabelingInterfaceUI';
-import { useLabeling } from './hooks/useLabeling';
+import { useLabelingInterface } from './hooks/useLabelingInterface';
 
 export default function LabelingPage() {
   const {
@@ -37,8 +37,19 @@ export default function LabelingPage() {
     handleSearchChange,
     handleQuickLabelDeleteModeToggle,
     handleDeleteCategory,
-    handleAddStep
-  } = useLabeling();
+    handleAddStep,
+    handleBackToCategories,
+    handleStepSelect,
+    timelineRows,
+    selectedChannels,
+    isChannelViewExpanded,
+    handleRowReorder,
+    filteredCategories,
+    onSearchChange,
+    onSearchClear,
+    onTimelineLockToggle,
+    onFlagToggle,
+  } = useLabelingInterface();
 
   return (
     <LabelingInterfaceUI
@@ -57,12 +68,12 @@ export default function LabelingPage() {
       onChannelSelect={handleChannelSelect}
       onChannelViewToggle={handleChannelViewToggle}
       onTimeDisplayModeToggle={handleTimeDisplayModeToggle}
-      onFlagToggle={handleFlagToggle}
+      onFlagToggle={onFlagToggle}
       formatTimecode={formatTimecode}
       onStepTypeCardCollapse={handleStepTypeCardCollapse}
-      onTimelineLockToggle={handleTimelineLockToggle}
+      onTimelineLockToggle={onTimelineLockToggle}
       onSessionSelect={handleSessionSelect}
-      onSearchClear={handleSearchClear}
+      onSearchClear={onSearchClear}
       onAddCategoryClick={handleAddCategoryClick}
       onAddCategoryCancel={handleAddCategoryCancel}
       onNewCategoryNameChange={handleNewCategoryNameChange}
@@ -71,10 +82,21 @@ export default function LabelingPage() {
       onAddStepClick={handleAddStepClick}
       onNewStepNameChange={handleNewStepNameChange}
       onAddStepCancel={handleAddStepCancel}
-      onSearchChange={handleSearchChange}
+      onSearchChange={onSearchChange}
       onQuickLabelDeleteModeToggle={handleQuickLabelDeleteModeToggle}
       onDeleteCategory={handleDeleteCategory}
       onAddStep={handleAddStep}
+      timelineRows={timelineRows}
+      selectedChannels={selectedChannels}
+      isChannelViewExpanded={isChannelViewExpanded}
+      onRowReorder={handleRowReorder}
+      handleCategorySelect={handleCategorySelect}
+      handleBackToCategories={handleBackToCategories}
+      handleStepSelect={handleStepSelect}
+      handleDeleteCategory={handleDeleteCategory}
+      handleDeleteStep={handleDeleteStep}
+      handleDeleteQuickTag={handleDeleteQuickTag}
+      filteredCategories={filteredCategories}
     />
   );
 } 

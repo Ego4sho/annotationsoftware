@@ -45,6 +45,16 @@ interface RatingUIProps extends RatingState {
   onEditRating: (rating: Rating) => void;
   onSetEditingRating: (rating: EditingRating | null) => void;
   editingRating: EditingRating | null;
+  newRating: {
+    name: string;
+    scaleStart: number;
+    scaleEnd: number;
+  };
+  onSetNewRating: (rating: { name: string; scaleStart: number; scaleEnd: number; }) => void;
+  handleAddRating: () => void;
+  closeAddRatingDialog: () => void;
+  toggleAddRatingDialog: () => void;
+  onRowReorder: (fromIndex: number, toIndex: number) => void;
 }
 
 export const RatingUI: React.FC<RatingUIProps> = ({
@@ -89,13 +99,17 @@ export const RatingUI: React.FC<RatingUIProps> = ({
   formatTimecode,
   onEditRating,
   onSetEditingRating,
-  editingRating
+  editingRating,
+  newRating,
+  onSetNewRating,
+  handleAddRating,
+  closeAddRatingDialog,
+  toggleAddRatingDialog,
+  onRowReorder
 }) => {
-  // Split clips into active and completed
   const activeClips = filteredClips.filter(clip => !clip.rated);
   const completedClips = filteredClips.filter(clip => clip.rated);
 
-  // Split steps into active and completed
   const activeSteps = filteredSteps.filter(step => step.ratedClips < step.totalClips);
   const completedSteps = filteredSteps.filter(step => step.ratedClips === step.totalClips);
 
@@ -387,7 +401,7 @@ export const RatingUI: React.FC<RatingUIProps> = ({
                   <div className="p-4 space-y-2 border-t border-[#604abd]">
                     <Button 
                       className="w-full bg-gradient-to-r from-[#604abd] to-[#d84bf7]"
-                      onClick={onAddRating}
+                      onClick={toggleAddRatingDialog}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Rating
@@ -478,10 +492,82 @@ export const RatingUI: React.FC<RatingUIProps> = ({
               allChannels={allChannels}
               onChannelViewToggle={onChannelViewToggle}
               onChannelToggle={onChannelToggle}
+              onRowReorder={onRowReorder}
             />
           </div>
         </div>
       </div>
+      <Dialog 
+        open={isAddingRating} 
+        onOpenChange={(open) => {
+          if (!open) {
+            closeAddRatingDialog();
+          }
+        }}
+      >
+        <DialogContent className="bg-[#1A1A1A] border border-[#604abd]">
+          <DialogHeader>
+            <DialogTitle className="text-[#E5E7EB]">Add Rating</DialogTitle>
+            <Button
+              variant="ghost"
+              className="absolute right-4 top-4 text-white hover:bg-[#604abd]/20"
+              onClick={closeAddRatingDialog}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name" className="text-[#E5E7EB]">Rating Name</Label>
+              <Input
+                id="name"
+                value={newRating.name}
+                onChange={(e) => onSetNewRating({ ...newRating, name: e.target.value })}
+                className="bg-gray-700 text-white border-gray-600"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="scale" className="text-[#E5E7EB]">Scale Range</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="scaleStart"
+                  type="number"
+                  value={newRating.scaleStart}
+                  onChange={(e) => onSetNewRating({ ...newRating, scaleStart: parseInt(e.target.value) })}
+                  className="w-20 bg-gray-700 text-white border-gray-600"
+                  min={1}
+                />
+                <span className="text-[#E5E7EB]">to</span>
+                <Input
+                  id="scaleEnd"
+                  type="number"
+                  value={newRating.scaleEnd}
+                  onChange={(e) => onSetNewRating({ ...newRating, scaleEnd: parseInt(e.target.value) })}
+                  className="w-20 bg-gray-700 text-white border-gray-600"
+                  min={2}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="ghost" 
+              onClick={closeAddRatingDialog}
+              className="text-white hover:bg-[#604abd]/20"
+            >
+              Cancel
+            </Button>
+            <Button 
+              className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
+              onClick={handleAddRating}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }; 

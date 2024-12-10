@@ -29,7 +29,12 @@ export default function RatingPage() {
     handleAddRating,
     handleEditRating,
     setEditingRating,
-    editingRating
+    editingRating,
+    setNewRating,
+    newRating,
+    closeAddRatingDialog,
+    toggleAddRatingDialog,
+    handleRowReorder,
   } = useRating();
 
   return (
@@ -55,10 +60,16 @@ export default function RatingPage() {
       onEditModeToggle={handleEditModeToggle}
       onDeleteModeToggle={handleDeleteModeToggle}
       formatTimecode={formatTimecode}
-      onAddRating={handleAddRating}
+      handleAddRating={handleAddRating}
       onEditRating={handleEditRating}
       onSetEditingRating={setEditingRating}
       editingRating={editingRating}
+      onSetNewRating={setNewRating}
+      newRating={newRating}
+      closeAddRatingDialog={closeAddRatingDialog}
+      toggleAddRatingDialog={toggleAddRatingDialog}
+      onAddRating={toggleAddRatingDialog}
+      onRowReorder={handleRowReorder}
     />
   );
 } 

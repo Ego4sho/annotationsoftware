@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { auth } from '@/lib/firebase/config'
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 
 export const useSignup = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -12,18 +14,17 @@ export const useSignup = () => {
     
     try {
       if (email === 'google') {
-        // Handle Google sign up
-        console.log('Google sign up')
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
         router.push('/dashboard')
         return
       }
 
       // Regular email/password sign up
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      console.log('Signup successful', { fullName, email, password })
+      await createUserWithEmailAndPassword(auth, email, password);
       router.push('/dashboard')
     } catch (err) {
+      console.error('Signup error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create account')
     } finally {
       setIsLoading(false)

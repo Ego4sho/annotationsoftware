@@ -13,6 +13,10 @@ import {
   ZoomIn, ZoomOut, Lock, Unlock, Plus, X, ArrowLeft, Search, Trash2, 
   ChevronDown, ChevronUp, Flag 
 } from 'lucide-react';
+import { TimelineCard } from '@/app/rating/components/ui/TimelineCard';
+
+// Define allChannels constant
+const channelArray = Array.from({ length: 126 }, (_, i) => `Channel ${i + 1}`);
 
 export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
   currentTime,
@@ -73,12 +77,26 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
   onQuickLabelDeleteModeToggle,
   onDeleteCategory,
   onAddStep,
+  timelineRows,
+  onRowReorder,
+  handleCategorySelect,
+  handleAddQuickTag,
+  handleBackToCategories,
+  handleStepSelect,
+  handleDeleteCategory,
+  handleDeleteStep,
+  handleDeleteQuickTag,
+  handleSearchChange,
+  handleSearchClear,
+  filteredCategories,
+  handleTimelineLockToggle,
+  handleFlagToggle,
 }) => {
   return (
     <div className="flex-1 bg-[#1A1A1A] text-white overflow-hidden flex flex-col h-screen">
       <div className="flex flex-col h-full gap-4 p-4">
         {/* Top Section */}
-        <div className="h-[50%] flex gap-4">
+        <div className="h-[45%] flex gap-4">
           {/* Video Player */}
           <div className="w-1/2">
             <Card className="h-full bg-[#262626] border border-[#604abd] flex flex-col">
@@ -111,13 +129,26 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-mono text-white">{formatTimecode(currentTime)}</span>
-                          <Select value={timeDisplayMode} onValueChange={onTimeDisplayModeToggle}>
+                          <Select
+                            value={timeDisplayMode}
+                            onValueChange={onTimeDisplayModeToggle}
+                          >
                             <SelectTrigger className="w-[90px] h-8">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="time">Time</SelectItem>
-                              <SelectItem value="frame">Frame</SelectItem>
+                            <SelectContent className="bg-white text-gray-900">
+                              <SelectItem
+                                value="time"
+                                className="hover:bg-gray-100"
+                              >
+                                Time
+                              </SelectItem>
+                              <SelectItem
+                                value="frame"
+                                className="hover:bg-gray-100"
+                              >
+                                Frame
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -185,199 +216,361 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
         </div>
 
         {/* Bottom Section */}
-        <div className="h-[45%] flex gap-4">
-          {/* Step Type Card */}
-          <div className={`${isStepTypeCardCollapsed ? 'w-12' : 'w-1/4'} transition-all duration-300 h-full`}>
-            <Card className="h-full bg-[#262626] border border-[#604abd] flex flex-col">
-              {/* Session Selection */}
-              <div className="p-2 border-b border-[#604abd]">
-                <Select 
-                  value={selectedSession.id} 
-                  onValueChange={onSessionSelect}
+        <div className="flex-1 flex gap-4 min-h-0">
+          {/* Step Card and Timeline */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Left section container */}
+            <div className="flex">
+              {/* Collapsible card */}
+              <motion.div
+                className="flex-shrink-0"
+                animate={{ 
+                  width: isStepTypeCardCollapsed ? '14px' : 'calc(100% - 56px)',
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card className={`h-full bg-[#262626] border-r border-[#604abd] flex flex-col transition-all duration-300 
+                  ${isStepTypeCardCollapsed ? 'w-[14px] overflow-hidden' : 'w-full'}`}>
+                  {!isStepTypeCardCollapsed && (
+                    <>
+                      {/* Session Selection */}
+                      <div className="p-2 border-b border-[#604abd]">
+                        <Select value={selectedSession.id} onValueChange={onSessionSelect}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select Session" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white text-gray-900">
+                            {sessions.map(session => (
+                              <SelectItem 
+                                key={session.id} 
+                                value={session.id}
+                                className="hover:bg-gray-100"
+                              >
+                                {session.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="mt-2 text-xs">
+                          <p className="text-white">Date: {selectedSession.date}</p>
+                          <p className="text-white">Duration: {selectedSession.duration}</p>
+                          <p className="text-white">File Types: {selectedSession.fileTypes.join(', ')}</p>
+                        </div>
+                      </div>
+
+                      {/* Step Type Content */}
+                      <div className="flex-1 flex flex-col overflow-hidden">
+                        <ScrollArea className="flex-1">
+                          <div className="p-4 space-y-4">
+                            {/* Search Bar */}
+                            <div className="relative w-full">
+                              <Input
+                                type="text"
+                                placeholder={selectedCategory ? "Search steps..." : "Search categories..."}
+                                value={searchTerm}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                className="w-full pl-10 pr-10 focus:ring-[#604abd]"
+                              />
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#E5E7EB]" size={18} />
+                              {searchTerm && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                                  onClick={onSearchClear}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Category Actions - Only show when no category is selected */}
+                            {!selectedCategory && (
+                              <div className="flex space-x-4 w-full">
+                                <Button
+                                  onClick={onAddCategoryClick}
+                                  className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white flex-1"
+                                >
+                                  <Plus className="h-5 w-5 mr-2" /> Add Category
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={onStepDeleteModeToggle}
+                                  className="flex-1 bg-red-500 hover:bg-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" /> {isStepDeleteMode ? 'Done' : 'Delete'}
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Categories Grid */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <AnimatePresence>
+                                {selectedCategory ? (
+                                  // Show steps view
+                                  <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="space-y-2 step-list-container col-span-2"
+                                  >
+                                    <div className="flex justify-between items-center mb-4">
+                                      <Button
+                                        variant="ghost"
+                                        onClick={handleBackToCategories}
+                                        className="bg-gray-700 text-white hover:bg-gray-600"
+                                      >
+                                        <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                                      </Button>
+                                      <Button
+                                        variant="destructive"
+                                        onClick={onStepDeleteModeToggle}
+                                        className="bg-red-500 hover:bg-red-600"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" /> {isStepDeleteMode ? 'Done' : 'Delete'}
+                                      </Button>
+                                    </div>
+                                    {/* Steps List */}
+                                    {filteredCategories[0]?.steps.map(step => (
+                                      <motion.div
+                                        key={step}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                      >
+                                        <Button
+                                          className="w-full justify-between relative bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
+                                          onClick={() => handleStepSelect(step)}
+                                        >
+                                          {step}
+                                          {isStepDeleteMode && (
+                                            <motion.div
+                                              initial={{ scale: 0 }}
+                                              animate={{ scale: 1 }}
+                                              exit={{ scale: 0 }}
+                                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center cursor-pointer"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteStep(step);
+                                              }}
+                                            >
+                                              <X className="h-4 w-4 text-white" />
+                                            </motion.div>
+                                          )}
+                                        </Button>
+                                      </motion.div>
+                                    ))}
+                                    {/* Add Step Button at bottom */}
+                                    <Button
+                                      className="w-full mt-4 bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
+                                      onClick={onAddStepClick}
+                                    >
+                                      <Plus className="h-4 w-4 mr-2" /> Add Step
+                                    </Button>
+                                  </motion.div>
+                                ) : (
+                                  // Show filtered categories grid
+                                  filteredCategories.map((category) => (
+                                    <motion.div
+                                      key={category.id}
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.8 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <Card
+                                        className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] p-4 cursor-pointer relative"
+                                        onClick={() => onCategorySelect(category.id)}
+                                      >
+                                        {isStepDeleteMode && (
+                                          <motion.button
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            exit={{ scale: 0 }}
+                                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center cursor-pointer z-10"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteCategory(category.id);
+                                            }}
+                                          >
+                                            <X className="h-4 w-4 text-white" />
+                                          </motion.button>
+                                        )}
+                                        <h3 className="font-medium mb-2 text-white text-center">{category.name}</h3>
+                                      </Card>
+                                    </motion.div>
+                                  ))
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </>
+                  )}
+                </Card>
+              </motion.div>
+
+              {/* Vertical Control Column */}
+              <div className="w-14 flex-shrink-0 bg-[#262626] border-x border-[#604abd] flex flex-col items-center py-2 space-y-2">
+                {/* Lock Button */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`
+                    text-white w-10 h-10 transition-all duration-200
+                    ${isTimelineLocked 
+                      ? 'bg-red-500 hover:bg-red-600' 
+                      : 'hover:bg-red-500/20'
+                    }
+                  `}
+                  onClick={onTimelineLockToggle}
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Session" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sessions.map(session => (
-                      <SelectItem key={session.id} value={session.id}>
-                        {session.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="mt-2 text-xs">
-                  <p>Date: {selectedSession.date}</p>
-                  <p>Duration: {selectedSession.duration}</p>
-                  <p>File Types: {selectedSession.fileTypes.join(', ')}</p>
-                </div>
+                  {isTimelineLocked ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
+                </Button>
+
+                {/* Flag Button */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`
+                    text-white w-10 h-10 transition-all duration-200
+                    ${isFlagSelected 
+                      ? 'border-2 border-white hover:bg-white/10' 
+                      : 'hover:bg-white/10'
+                    }
+                  `}
+                  onClick={onFlagToggle}
+                >
+                  <Flag className="h-5 w-5" />
+                </Button>
+
+                {/* Rest of the buttons */}
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <Button
+                    key={index}
+                    size="sm"
+                    variant="ghost"
+                    className="w-10 h-10 bg-gray-700 opacity-50 cursor-not-allowed"
+                    disabled
+                  />
+                ))}
+
+                {/* Collapse button */}
+                <motion.div
+                  className="w-full h-10 bg-gray-700 hover:bg-gray-600 flex items-center justify-center cursor-pointer transition-colors duration-300"
+                  onClick={onStepTypeCardCollapse}
+                  animate={{ rotate: isStepTypeCardCollapsed ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <ChevronLeft className="h-5 w-5 text-white" />
+                </motion.div>
               </div>
+            </div>
 
-              {/* Category Management */}
-              <div className="flex-1 flex flex-col overflow-hidden h-full">
-                <ScrollArea className="flex-1">
-                  <div className="p-4">
-                    {/* Search and Add/Delete buttons */}
-                    <div className="relative w-full mb-4">
-                      <Input
-                        type="text"
-                        placeholder="Search step types..."
-                        value={searchTerm}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full pl-10 pr-10"
-                      />
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                      {searchTerm && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                          onClick={onSearchClear}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="flex space-x-2 mb-4">
-                      <Button
-                        onClick={onAddCategoryClick}
-                        className="flex-1 bg-gradient-to-r from-[#604abd] to-[#d84bf7]"
-                      >
-                        <Plus className="h-4 w-4 mr-2" /> Add Category
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={onStepDeleteModeToggle}
-                        className="flex-1"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> {isStepDeleteMode ? 'Done' : 'Delete'}
-                      </Button>
-                    </div>
-
-                    {/* Categories Grid */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {categories.map((category) => (
-                        <Card
-                          key={category.id}
-                          className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] p-4 cursor-pointer"
-                          onClick={() => onCategorySelect(category.id)}
-                        >
-                          <h3 className="font-medium mb-2 text-center">{category.name}</h3>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                </ScrollArea>
-              </div>
-            </Card>
-          </div>
-
-          {/* Timeline */}
-          <div className="flex-1 h-full">
-            <Card className="h-full bg-[#262626] border border-[#604abd] flex flex-col">
+            {/* Timeline section with dynamic width */}
+            <div className={`flex-1 h-full flex flex-col transition-all duration-300
+              ${isStepTypeCardCollapsed ? 'ml-0' : ''}`}>
               {/* Quick Label Button Row */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-[#604abd]">
-                <div className="flex items-center space-x-2 overflow-x-auto flex-grow">
+              <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-t border-b border-[#604abd]">
+                <div className="flex items-center space-x-2 overflow-x-auto flex-grow quick-label-container">
                   {quickTags.map((tag, index) => (
-                    <Button
+                    <motion.div
                       key={index}
-                      size="sm"
-                      className={`
-                        px-4 py-2 rounded-md relative
-                        ${selectedQuickTag === tag
-                          ? 'bg-gradient-to-r from-[#7059c4] to-[#de65f7] text-white'
-                          : 'bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white'
-                        }
-                      `}
-                      onClick={() => onQuickTagSelect(tag)}
+                      initial={false}
+                      animate={{
+                        opacity: selectedQuickTag ? (selectedQuickTag === tag ? 1 : 0.3) : 1,
+                      }}
+                      transition={{ duration: 0.2 }}
                     >
-                      {tag}
-                    </Button>
+                      <Button
+                        size="sm"
+                        className={`
+                          transition-all duration-200 px-4 py-2 rounded-md relative
+                          ${selectedQuickTag === tag
+                            ? 'bg-gradient-to-r from-[#7059c4] to-[#de65f7] text-white border-2 border-white'
+                            : 'bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white hover:from-[#7059c4] hover:to-[#de65f7]'
+                          }
+                          ${selectedQuickTag && selectedQuickTag !== tag ? 'pointer-events-none' : ''}
+                        `}
+                        onClick={() => onQuickTagSelect(tag)}
+                      >
+                        {tag}
+                        {isQuickLabelDeleteMode && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteQuickTag(tag);
+                            }}
+                          >
+                            <X className="h-3 w-3 text-white" />
+                          </motion.div>
+                        )}
+                      </Button>
+                    </motion.div>
                   ))}
                 </div>
                 <Button
                   size="sm"
-                  variant="destructive"
+                  className={`
+                    bg-red-500 text-white hover:bg-red-600 transition-colors duration-200
+                    ${selectedQuickTag ? 'opacity-30 pointer-events-none' : ''}
+                    ${isQuickLabelDeleteMode ? 'bg-red-600' : ''}
+                  `}
                   onClick={onQuickLabelDeleteModeToggle}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
 
-              {/* Timeline Content */}
-              <div className="flex-1 overflow-hidden h-full">
-                <ScrollArea className="h-full">
-                  <div className="space-y-1 p-2">
-                    {/* Timeline tracks */}
-                    {selectedChannels.map((channel) => (
-                      <div key={channel} className="h-12 bg-[#1A1A1A] relative flex items-center">
-                        <span className="w-8 bg-gray-700 text-white text-xs p-1 rounded-sm">{channel}</span>
-                        <div className="flex-1 h-full bg-[#262626] ml-1" />
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+              {/* TimelineCard */}
+              <div className="flex-1 min-h-0">
+                <TimelineCard
+                  timelineRows={timelineRows}
+                  isChannelViewExpanded={isChannelViewExpanded}
+                  selectedChannels={selectedChannels}
+                  allChannels={channelArray}
+                  onChannelViewToggle={onChannelViewToggle}
+                  onChannelToggle={onChannelSelect}
+                  onRowReorder={onRowReorder}
+                />
               </div>
-
-              {/* Channel View Toggle and Grid */}
-              <div className="relative border-t border-[#604abd]">
-                <Button
-                  variant="ghost"
-                  className="w-full flex items-center justify-center py-1"
-                  onClick={onChannelViewToggle}
-                >
-                  {isChannelViewExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-                  <span className="ml-2">{isChannelViewExpanded ? "Hide" : "Show"} Channel View</span>
-                </Button>
-
-                <AnimatePresence>
-                  {isChannelViewExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="absolute bottom-full left-0 right-0 bg-[#1A1A1A] border-t border-[#604abd]"
-                    >
-                      <ScrollArea className="h-64">
-                        <div className="p-4 grid grid-cols-6 gap-2">
-                          {allChannels.map((channel) => (
-                            <div key={channel} className="flex items-center">
-                              <Checkbox
-                                id={channel}
-                                checked={selectedChannels.includes(channel)}
-                                onCheckedChange={(checked) => onChannelSelect(checked as boolean, channel)}
-                                className="border-white text-white"
-                              />
-                              <label htmlFor={channel} className="ml-2 text-sm text-white">
-                                {channel}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </Card>
+            </div>
           </div>
         </div>
 
         {/* Dialogs */}
         <Dialog open={isAddingStep} onOpenChange={onAddStepCancel}>
-          <DialogContent>
+          <DialogContent className="bg-[#1A1A1A] border border-[#604abd]">
             <DialogHeader>
-              <DialogTitle>Add Step</DialogTitle>
+              <DialogTitle className="text-[#E5E7EB]">Add Step</DialogTitle>
             </DialogHeader>
             <Input
               value={newStepName}
               onChange={(e) => onNewStepNameChange(e.target.value)}
               placeholder="Enter step name"
+              className="bg-gray-700 text-white border-gray-600"
+              autoFocus
             />
             <DialogFooter>
-              <Button onClick={onAddStep}>Add</Button>
-              <Button variant="outline" onClick={onAddStepCancel}>Cancel</Button>
+              <Button 
+                onClick={onAddStep}
+                className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
+              >
+                Save
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={onAddStepCancel}
+                className="text-white hover:bg-[#604abd]/20"
+              >
+                Cancel
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

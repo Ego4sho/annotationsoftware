@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/collections/{collectionId}/{fileType}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null 
+        && request.auth.uid == userId
+        && validateFileType(fileType, request.resource.contentType)
+        && request.resource.size < 500 * 1024 * 1024; // 500MB limit
+    }
+  }
+}
+
+function validateFileType(fileType, contentType) {
+  let validTypes = {
+    'video': ['video/mp4', 'video/quicktime'],
+    'audio': ['audio/mpeg', 'audio/wav'],
+    'motion': ['application/octet-stream', 'text/plain']
+  };
+  return fileType in validTypes 
+    && contentType in validTypes[fileType];
+} 

@@ -1,40 +1,33 @@
-import { Collection, Progress } from '../../types'
+import { Collection } from '../../types'
 
 interface ProjectProgressBarProps {
   collections: Collection[]
-  category: keyof Progress
+  category: 'labeling' | 'rating' | 'validated'
 }
 
-export const ProjectProgressBar: React.FC<ProjectProgressBarProps> = ({ collections, category }) => {
-  const totalCards = collections.length
-  const statusCounts = {
-    'not-started': collections.filter(c => c.progress[category] === 'not-started').length,
-    'in-progress': collections.filter(c => c.progress[category] === 'in-progress').length,
-    'completed': collections.filter(c => c.progress[category] === 'completed').length
-  }
+export const ProjectProgressBar: React.FC<ProjectProgressBarProps> = ({
+  collections,
+  category
+}) => {
+  const total = collections.length
+  const completed = collections.filter(c => c.progress[category] === 'completed').length
+  const inProgress = collections.filter(c => c.progress[category] === 'in-progress').length
+  const notStarted = total - completed - inProgress
 
   return (
-    <div className="space-y-1">
-      <div className="flex h-2 bg-gray-700 rounded-full overflow-hidden">
-        {statusCounts['not-started'] > 0 && (
-          <div 
-            className="bg-red-500 h-full"
-            style={{ width: `${(statusCounts['not-started'] / totalCards) * 100}%` }}
-          />
-        )}
-        {statusCounts['in-progress'] > 0 && (
-          <div 
-            className="bg-orange-500 h-full"
-            style={{ width: `${(statusCounts['in-progress'] / totalCards) * 100}%` }}
-          />
-        )}
-        {statusCounts['completed'] > 0 && (
-          <div 
-            className="bg-green-500 h-full"
-            style={{ width: `${(statusCounts['completed'] / totalCards) * 100}%` }}
-          />
-        )}
-      </div>
+    <div className="flex h-1 bg-gray-700 rounded-full overflow-hidden">
+      <div 
+        className="bg-green-500" 
+        style={{ width: `${(completed / total) * 100}%` }}
+      />
+      <div 
+        className="bg-yellow-500" 
+        style={{ width: `${(inProgress / total) * 100}%` }}
+      />
+      <div 
+        className="bg-gray-500" 
+        style={{ width: `${(notStarted / total) * 100}%` }}
+      />
     </div>
   )
 } 

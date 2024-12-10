@@ -1,5 +1,9 @@
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { Metadata } from 'next'
+import { AuthProvider } from '@/lib/context/AuthContext'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'DeeperEdge - Advanced Movement Classification Platform',
@@ -13,7 +17,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+      <body className={inter.className} suppressHydrationWarning>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   )
 }

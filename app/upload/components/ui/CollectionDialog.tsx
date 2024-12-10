@@ -1,218 +1,297 @@
-import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, X } from 'lucide-react'
-import { Collection, Status } from '../../types'
-import { ProgressBar } from './ProgressBar'
+import { X } from 'lucide-react'
+import { Collection, ProjectFile } from '@/types/upload'
+import { useState, useEffect } from 'react'
+import { Timestamp } from 'firebase/firestore'
+import { v4 as uuidv4 } from 'uuid'
+import { useAuth } from '@/lib/context/AuthContext'
 import { FileUploadArea } from './FileUploadArea'
-import { useToast } from "@/components/ui/use-toast"
+import { format } from 'date-fns'
+import { useUploadState } from '../../hooks/useUploadState'
 
 interface CollectionDialogProps {
-  isOpen: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  collection: Collection | null
   onSave: (collection: Collection) => void
-  initialData?: Collection | null
 }
 
 export const CollectionDialog: React.FC<CollectionDialogProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  initialData = null
+  open,
+  onOpenChange,
+  collection,
+  onSave
 }) => {
-  const { toast } = useToast()
-  const [formData, setFormData] = useState<Collection>({
-    id: '',
-    title: '',
-    description: '',
-    createdDate: new Date(),
-    videoFiles: [],
-    audioFiles: [],
-    bvhFile: null,
-    auxFiles: {},
-    progress: {
-      labeling: 'not-started',
-      rating: 'not-started',
-      validated: 'not-started'
-    }
-  })
+  const [formData, setFormData] = useState<Collection | null>(null);
+  const { user } = useAuth();
+  const { getFiles, clearFiles } = useUploadState();
 
   useEffect(() => {
-    if (isOpen) {
-      setFormData(initialData || {
+    if (collection) {
+      setFormData({
+        ...collection,
+        files: collection.files || {
+          video: [],
+          audio: [],
+          motion: [],
+          aux1: [],
+          aux2: [],
+          aux3: [],
+          aux4: [],
+          aux5: []
+        }
+      });
+    } else {
+      setFormData({
         id: '',
-        title: '',
+        name: '',
         description: '',
-        createdDate: new Date(),
-        videoFiles: [],
-        audioFiles: [],
-        bvhFile: null,
-        auxFiles: {},
+        userId: user?.uid || '',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        status: 'incomplete',
+        files: {
+          video: [],
+          audio: [],
+          motion: [],
+          aux1: [],
+          aux2: [],
+          aux3: [],
+          aux4: [],
+          aux5: []
+        },
         progress: {
           labeling: 'not-started',
           rating: 'not-started',
           validated: 'not-started'
         }
-      })
+      } as Collection);
     }
-  }, [isOpen, initialData])
+  }, [collection, user]);
 
   const handleSubmit = () => {
-    if (!formData.title) {
-      toast({
-        title: "Error",
-        description: "Collection title is required",
-        variant: "destructive"
-      })
-      return
-    }
+    if (formData) {
+      // Get files from Zustand store
+      const uploadedVideoFiles = getFiles(formData.id).filter(f => f.type === 'video').map(f => ({
+        id: f.id,
+        projectId: formData.id,
+        userId: user?.uid || '',
+        type: f.type,
+        fileName: f.file.name,
+        originalName: f.file.name,
+        fileUrl: URL.createObjectURL(f.file),
+        size: f.file.size,
+        uploadedAt: Timestamp.now(),
+        status: 'ready'
+      } as ProjectFile));
 
-    onSave({
-      ...formData,
-      id: formData.id || Date.now().toString(),
-      createdDate: formData.createdDate || new Date()
-    })
-  }
+      const uploadedAudioFiles = getFiles(formData.id).filter(f => f.type === 'audio').map(f => ({
+        id: f.id,
+        projectId: formData.id,
+        userId: user?.uid || '',
+        type: f.type,
+        fileName: f.file.name,
+        originalName: f.file.name,
+        fileUrl: URL.createObjectURL(f.file),
+        size: f.file.size,
+        uploadedAt: Timestamp.now(),
+        status: 'ready'
+      } as ProjectFile));
+
+      const uploadedMotionFiles = getFiles(formData.id).filter(f => f.type === 'motion').map(f => ({
+        id: f.id,
+        projectId: formData.id,
+        userId: user?.uid || '',
+        type: f.type,
+        fileName: f.file.name,
+        originalName: f.file.name,
+        fileUrl: URL.createObjectURL(f.file),
+        size: f.file.size,
+        uploadedAt: Timestamp.now(),
+        status: 'ready'
+      } as ProjectFile));
+
+      // Get existing files that weren't modified
+      const existingVideoFiles = formData.files.video || [];
+      const existingAudioFiles = formData.files.audio || [];
+      const existingMotionFiles = formData.files.motion || [];
+      const existingAux1Files = formData.files.aux1 || [];
+      const existingAux2Files = formData.files.aux2 || [];
+      const existingAux3Files = formData.files.aux3 || [];
+      const existingAux4Files = formData.files.aux4 || [];
+      const existingAux5Files = formData.files.aux5 || [];
+
+      // Update formData with both uploaded and existing files
+      const updatedCollection = {
+        ...formData,
+        updatedAt: Timestamp.now(),
+        files: {
+          video: [...existingVideoFiles, ...uploadedVideoFiles],
+          audio: [...existingAudioFiles, ...uploadedAudioFiles],
+          motion: [...existingMotionFiles, ...uploadedMotionFiles],
+          aux1: existingAux1Files,
+          aux2: existingAux2Files,
+          aux3: existingAux3Files,
+          aux4: existingAux4Files,
+          aux5: existingAux5Files
+        }
+      };
+
+      console.log('Saving collection with files:', updatedCollection);
+      onSave(updatedCollection);
+      clearFiles(formData.id);  // Clear the Zustand store for this collection
+      onOpenChange(false);
+    }
+  };
+
+  const handleDeleteFile = (type: 'video' | 'audio' | 'motion', fileId: string) => {
+    if (formData) {
+      setFormData({
+        ...formData,
+        files: {
+          ...formData.files,
+          [type]: (formData.files?.[type] || []).filter(file => file.id !== fileId)
+        }
+      });
+    }
+  };
+
+  if (!formData) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="fixed top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] bg-[#1A1A1A] border border-[#604abd] w-[calc(100vw-32rem)] max-w-[1200px] max-h-[90vh] flex flex-col overflow-hidden rounded-lg"
-        aria-describedby="collection-dialog-description"
-      >
-        <div id="collection-dialog-description" className="sr-only">
-          Dialog for creating or editing a collection
-        </div>
-        <DialogHeader className="border-b border-[#604abd] px-6 py-4 shrink-0">
-          <div className="flex items-center justify-between w-full relative">
-            <DialogTitle className="text-[#E5E7EB] text-xl">
-              {initialData ? 'Edit Collection' : 'New Collection'}
-            </DialogTitle>
-            <DialogClose className="p-1 hover:bg-white/10 rounded-full">
-              <X className="h-5 w-5 text-white" />
-            </DialogClose>
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px] h-[80vh] bg-[#1A1A1A] border-[#604abd] p-0 flex flex-col">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="text-2xl font-bold text-white">
+            {collection ? 'Edit Collection' : 'New Collection'}
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            {collection ? 'Edit your collection details below.' : 'Create a new collection by filling out the details below.'}
+          </DialogDescription>
+          <DialogClose className="absolute right-4 top-4 text-gray-400 hover:text-white">
+            <X className="h-4 w-4" />
+          </DialogClose>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="px-6 py-4 space-y-6">
-            <div>
-              <Label className="text-[#E5E7EB]">Collection Title</Label>
-              <Input 
-                className="bg-gray-700 text-white border-gray-600"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label className="text-[#E5E7EB]">Description</Label>
-              <Textarea 
-                className="bg-gray-700 text-white border-gray-600 min-h-[100px]"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label className="text-[#E5E7EB]">Creation Date</Label>
-              <div className="flex items-center mt-2">
+        <ScrollArea className="flex-1 px-6">
+          <div className="space-y-6 pb-6">
+            {/* Details Section */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white">Title</Label>
                 <Input
-                  type="date"
-                  value={formData.createdDate.toISOString().split('T')[0]}
-                  onChange={(e) => setFormData(prev => ({ ...prev, createdDate: new Date(e.target.value) }))}
-                  className="bg-gray-700 text-white border-gray-600 rounded-md p-2"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter collection title"
+                  className="bg-[#262626] border-[#404040] text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-white">Description</Label>
+                <Textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter collection description"
+                  className="bg-[#262626] border-[#404040] text-white min-h-[80px]"
                 />
               </div>
             </div>
 
+            {/* Status Section */}
             <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Status</h3>
               {(['labeling', 'rating', 'validated'] as const).map(category => (
                 <div key={category} className="space-y-2">
-                  <Label className="text-[#E5E7EB] capitalize">{category} Status</Label>
+                  <Label className="text-white capitalize">{category} Status</Label>
                   <Select
                     value={formData.progress[category]}
-                    onValueChange={(value: Status) => setFormData(prev => ({
-                      ...prev,
-                      progress: {
-                        ...prev.progress,
-                        [category]: value
-                      }
-                    }))}
+                    onValueChange={(value: 'not-started' | 'in-progress' | 'completed') => 
+                      setFormData(prev => prev ? ({
+                        ...prev,
+                        progress: {
+                          ...prev.progress,
+                          [category]: value
+                        }
+                      }) : prev)
+                    }
                   >
-                    <SelectTrigger className="bg-gray-700 text-white border-gray-600">
+                    <SelectTrigger className="bg-[#262626] border-[#404040] text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200">
-                      <SelectItem value="not-started" className="text-gray-900 hover:bg-gray-100">Not Started</SelectItem>
-                      <SelectItem value="in-progress" className="text-gray-900 hover:bg-gray-100">In Progress</SelectItem>
-                      <SelectItem value="completed" className="text-gray-900 hover:bg-gray-100">Completed</SelectItem>
+                    <SelectContent className="bg-[#262626] border-[#404040]">
+                      <SelectItem value="not-started" className="text-white">Not Started</SelectItem>
+                      <SelectItem value="in-progress" className="text-white">In Progress</SelectItem>
+                      <SelectItem value="completed" className="text-white">Completed</SelectItem>
                     </SelectContent>
                   </Select>
-                  <ProgressBar status={formData.progress[category]} />
                 </div>
               ))}
             </div>
 
-            <div className="space-y-6">
+            {/* Files Section */}
+            <div className="space-y-4">
               <div>
-                <Label className="text-[#E5E7EB]">Video Files (Max 5)</Label>
+                <Label className="text-white mb-2 block">Video Files</Label>
                 <FileUploadArea
-                  files={formData.videoFiles}
-                  onFilesChange={(files) => setFormData(prev => ({
-                    ...prev,
-                    videoFiles: files
-                  }))}
-                  maxFiles={5}
+                  projectId={formData.id}
+                  collectionId={formData.id}
                   accept="video/*"
-                />
-              </div>
-
-              <div>
-                <Label className="text-[#E5E7EB]">Audio Files (Max 5)</Label>
-                <FileUploadArea
-                  files={formData.audioFiles}
-                  onFilesChange={(files) => setFormData(prev => ({
-                    ...prev,
-                    audioFiles: files
-                  }))}
                   maxFiles={5}
-                  accept="audio/*"
+                  fileType="video"
+                  disabled={false}
+                  collection={formData}
+                  onDeleteFile={handleDeleteFile}
                 />
               </div>
 
               <div>
-                <Label className="text-[#E5E7EB]">BVH Sensor File</Label>
+                <Label className="text-white mb-2 block">Audio Files</Label>
                 <FileUploadArea
-                  files={formData.bvhFile ? [formData.bvhFile] : []}
-                  onFilesChange={(files) => setFormData(prev => ({
-                    ...prev,
-                    bvhFile: files[0] || null
-                  }))}
-                  maxFiles={1}
-                  accept=".bvh"
+                  projectId={formData.id}
+                  collectionId={formData.id}
+                  accept="audio/*"
+                  maxFiles={5}
+                  fileType="audio"
+                  disabled={false}
+                  collection={formData}
+                  onDeleteFile={handleDeleteFile}
                 />
               </div>
 
-              {[1, 2, 3, 4, 5].map(num => (
-                <div key={num}>
-                  <Label className="text-[#E5E7EB]">AUX Sensor {num}</Label>
+              <div>
+                <Label className="text-white mb-2 block">Sensor Files</Label>
+                <FileUploadArea
+                  projectId={formData.id}
+                  collectionId={formData.id}
+                  accept=".bvh,.json"
+                  maxFiles={5}
+                  fileType="motion"
+                  disabled={false}
+                  collection={formData}
+                  onDeleteFile={handleDeleteFile}
+                />
+              </div>
+
+              {/* AUX Sensor Sections */}
+              {[1, 2, 3, 4, 5].map((num) => (
+                <div key={`aux${num}`}>
+                  <Label className="text-white mb-2 block">AUX Sensor {num}</Label>
                   <FileUploadArea
-                    files={formData.auxFiles[num] ? [formData.auxFiles[num]!] : []}
-                    onFilesChange={(files) => setFormData(prev => ({
-                      ...prev,
-                      auxFiles: {
-                        ...prev.auxFiles,
-                        [num]: files[0] || null
-                      }
-                    }))}
+                    projectId={formData.id}
+                    collectionId={formData.id}
+                    accept=".txt,.csv,.dat"
                     maxFiles={1}
-                    accept=".aux,.csv,.txt"
+                    fileType={`aux${num}` as 'aux1' | 'aux2' | 'aux3' | 'aux4' | 'aux5'}
+                    disabled={false}
+                    collection={formData}
+                    onDeleteFile={handleDeleteFile}
                   />
                 </div>
               ))}
@@ -220,15 +299,15 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
           </div>
         </ScrollArea>
 
-        <div className="border-t border-[#604abd] px-6 py-4 mt-auto shrink-0">
+        <div className="p-6 border-t border-[#404040]">
           <Button 
-            className="w-full bg-gradient-to-r from-[#604abd] to-[#d84bf7] hover:from-[#7059c4] hover:to-[#de65f7]"
             onClick={handleSubmit}
+            className="w-full bg-[#604abd] hover:bg-[#4c3a9e] text-white"
           >
-            {initialData ? 'Save Changes' : 'Create Collection'}
+            {collection ? 'Save Changes' : 'Create Collection'}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  )
-} 
+  );
+}; 

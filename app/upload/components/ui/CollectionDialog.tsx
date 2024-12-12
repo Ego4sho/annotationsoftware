@@ -166,13 +166,16 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] h-[80vh] bg-[#1A1A1A] border-[#604abd] p-0 flex flex-col">
+      <DialogContent 
+        className="sm:max-w-[600px] h-[80vh] bg-[#1A1A1A] border-[#604abd] p-0 flex flex-col"
+        aria-describedby="collection-dialog-description"
+      >
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-2xl font-bold text-white">
-            {collection ? 'Edit Collection' : 'New Collection'}
+            {collection ? 'Edit Collection' : 'Add New Collection'}
           </DialogTitle>
-          <DialogDescription className="text-gray-400">
-            {collection ? 'Edit your collection details below.' : 'Create a new collection by filling out the details below.'}
+          <DialogDescription id="collection-dialog-description" className="text-gray-400">
+            {collection ? 'Update collection details and manage files' : 'Create a new collection and add files'}
           </DialogDescription>
           <DialogClose className="absolute right-4 top-4 text-gray-400 hover:text-white">
             <X className="h-4 w-4" />

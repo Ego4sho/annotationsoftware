@@ -1,3 +1,5 @@
+import { Collection, Project } from '@/types/upload'
+
 export interface LabelingInterfaceProps {
   currentTime: number;
   duration: number;
@@ -75,4 +77,13 @@ export interface LabelingInterfaceProps {
   }>;
   handleSearchChange: (term: string) => void;
   handleSearchClear: () => void;
+  handleTimelineLockToggle: () => void;
+  handleFlagToggle: () => void;
+  handleCategorySelect: (categoryId: string) => void;
+  handleAddQuickTag: (tag: string) => void;
+  handleBackToCategories: () => void;
+  handleStepSelect: (step: string) => void;
+  projects: Project[];
+  collections: Collection[];
+  onFileSelect: (fileType: string, fileId: string) => void;
 } 

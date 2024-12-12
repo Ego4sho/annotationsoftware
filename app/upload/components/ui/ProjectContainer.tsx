@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, X, ChevronRight, Pencil } from 'lucide-react'
@@ -7,12 +6,12 @@ import { Project, Collection } from '@/types/upload'
 import { CollectionCard } from './CollectionCard'
 import { ProjectProgressBar } from './ProjectProgressBar'
 import { format } from 'date-fns'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Timestamp } from 'firebase/firestore'
-import { getProgressCounts } from '../../utils/progress'
 import { cn } from '@/lib/utils'
+import { Card } from "@/components/ui/card"
 
 interface ProjectContainerProps {
   project: Project
@@ -23,14 +22,11 @@ interface ProjectContainerProps {
   onCollectionMove: (collectionId: string, sourceProjectId: string | null, targetProjectId: string) => void
   onDeleteCollection: (id: string, projectId: string) => void
   onEditProject: (id: string, data: { title: string; name: string; description: string; createdAt: Timestamp }) => void
+  showFileSelectionButtons?: boolean
+  onFileSelect?: (fileType: string, fileId: string) => void
 }
 
-interface ProjectEditData {
-  name: string;
-  description: string;
-}
-
-export const ProjectContainer: React.FC<ProjectContainerProps> = ({
+export function ProjectContainer({
   project,
   collections,
   deleteMode,
@@ -38,250 +34,232 @@ export const ProjectContainer: React.FC<ProjectContainerProps> = ({
   onEditCollection,
   onCollectionMove,
   onDeleteCollection,
-  onEditProject
-}) => {
+  onEditProject,
+  showFileSelectionButtons = false,
+  onFileSelect
+}: ProjectContainerProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editData, setEditData] = useState<ProjectEditData>(() => ({
-    name: project.name,
-    description: project.description || ''
-  }))
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [editData, setEditData] = useState({
+    title: project.name,
+    description: project.description
+  })
 
-  useEffect(() => {
-    setEditData({
-      name: project.name,
-      description: project.description || ''
-    });
-  }, [project]);
-
-  // Get the actual collection objects from the IDs
-  const projectCollections = (project.collections || [])
-    .map(id => collections.find(c => c.id === id && !c.deleted))
-    .filter((c): c is Collection => c !== undefined && !c.deleted)
-
-  const filteredCollections = projectCollections.filter(collection =>
-    collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (collection.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+  const projectCollections = collections.filter(c => c.projectId === project.id)
+  const filteredCollections = projectCollections.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragOver<HTMLDivElement>) => {
     e.preventDefault()
-    e.stopPropagation()
-    setDragOver(true)
+    setIsDragOver(true)
   }
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragOver(false)
+  const handleDragLeave = () => {
+    setIsDragOver(false)
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    e.stopPropagation()
-    setDragOver(false)
-    
+    setIsDragOver(false)
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'))
-      if (data.type === 'collection') {
-        onCollectionMove(data.id, null, project.id)
+      if (data.collectionId && data.sourceProjectId) {
+        onCollectionMove(data.collectionId, data.sourceProjectId, project.id)
       }
     } catch (error) {
-      console.error('Drop handling error:', error)
+      console.error('Error handling drop:', error)
     }
   }
 
-  const handleEditSave = () => {
-    const updatedData = {
-      title: editData.name.trim(),
-      name: editData.name.trim(),
-      description: editData.description.trim(),
+  const handleEditSubmit = () => {
+    onEditProject(project.id, {
+      title: editData.title,
+      name: editData.title,
+      description: editData.description,
       createdAt: project.createdAt
-    };
-    onEditProject(project.id, updatedData);
-    setIsEditDialogOpen(false);
-  };
+    })
+    setIsEditDialogOpen(false)
+  }
 
-  const handleDeleteCollection = (collectionId: string) => {
-    console.log('Deleting collection from project:', { collectionId, projectId: project.id });
-    onDeleteCollection(collectionId, project.id);
-  };
+  // Calculate progress counts
+  const getProgressCounts = (category: 'labeling' | 'rating' | 'validated') => {
+    return projectCollections.filter(c => c.progress[category] === 'completed').length
+  }
+
+  const labelingCount = getProgressCounts('labeling')
+  const ratingCount = getProgressCounts('rating')
+  const validatedCount = getProgressCounts('validated')
 
   return (
-    <div 
-      className="w-full space-y-2"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <div className={cn(
-        "flex flex-col w-full p-3 bg-[#262626] rounded-lg transition-colors",
-        dragOver && "border-2 border-dashed border-[#604abd] bg-white/20"
-      )}>
-        <div className="flex items-start justify-between">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex-shrink-0 p-1 hover:bg-white/10 rounded transition-colors"
-          >
-            <ChevronRight 
-              className={`h-4 w-4 text-white transform transition-transform ${
-                isExpanded ? 'rotate-90' : ''
-              }`}
-            />
-          </button>
-
-          <div className="flex-1 text-center -ml-6">
-            <h3 className="text-[#E5E7EB] font-bold text-lg truncate">
-              {project.name}
-            </h3>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              className="p-1 rounded-full bg-transparent hover:bg-white/10"
-              onClick={() => setIsEditDialogOpen(true)}
-            >
-              <Pencil className="h-4 w-4 text-white" />
-            </Button>
-            {deleteMode && (
-              <Button
-                className="p-1 rounded-full bg-red-500 hover:bg-red-600"
-                onClick={() => onDelete(project.id)}
-              >
-                <X className="h-4 w-4 text-white" />
-              </Button>
+    <div className={cn(
+      "group relative transition-all duration-300",
+      isExpanded && "row-span-2 z-10"
+    )}>
+      <Card 
+        className={cn(
+          "bg-[#262626] border-[#604abd] cursor-pointer hover:bg-[#303030] relative transition-all duration-300 h-full",
+          isDragOver && "border-purple-500 bg-purple-500/10",
+          deleteMode && "border-red-500 hover:border-red-600",
+          isExpanded && "!h-auto"
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className="absolute top-0 left-0 bg-red-500 text-white text-[10px] px-1 rounded">Upload Page Project Container</div>
+        <div className="p-2">
+          <div className="flex justify-between items-start">
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-medium text-white">{project.name}</h3>
+              <p className="text-xs text-gray-400 line-clamp-1">{project.description}</p>
+              <p className="text-[10px] text-gray-500">
+                Created: {format(project.createdAt.toDate(), 'MMM d, yyyy')}
+              </p>
+            </div>
+            {!showFileSelectionButtons && (
+              <div className="flex gap-1">
+                {deleteMode ? (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => onDelete(project.id)}
+                    className="h-6 w-6"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditDialogOpen(true);
+                      }}
+                      className="h-6 w-6 border-[#604abd] text-white hover:bg-[#604abd]/20"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsExpanded(!isExpanded);
+                      }}
+                      className={cn(
+                        "h-6 w-6 border-[#604abd] text-white hover:bg-[#604abd]/20 transition-transform",
+                        isExpanded && "rotate-90"
+                      )}
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
             )}
           </div>
-        </div>
 
-        {project.description && (
-          <div className="mt-2 mb-1">
-            <p className="text-gray-400 text-[10px] text-center whitespace-pre-wrap break-words">
-              {project.description}
-            </p>
-          </div>
-        )}
-
-        <p className="text-gray-400 text-[9px] text-center mb-2">
-          {format(project.createdAt.toDate(), 'MMM d, yyyy')}
-        </p>
-
-        <div className="space-y-[2px]">
-          {(['labeling', 'rating', 'validated'] as const).map(category => {
-            const progress = getProgressCounts(projectCollections, category);
-            return (
-              <div key={category}>
-                <div className="flex justify-between items-center mb-0.5">
-                  <span className="text-gray-400 capitalize text-[9px]">{category}</span>
-                  <span className="text-gray-400 text-[9px]">
-                    {progress.notStarted}/{progress.total} Not Started
-                    {progress.inProgress > 0 && ` • ${progress.inProgress}/${progress.total} In Progress`}
-                    {progress.completed > 0 && ` • ${progress.completed}/${progress.total} Completed`}
-                  </span>
-                </div>
-                <div className="h-1">
-                  <ProjectProgressBar 
-                    collections={projectCollections} 
-                    category={category} 
-                  />
-                </div>
+          <div className="mt-2 space-y-2">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Labeling</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <AnimatePresence initial={false} mode="sync">
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <div className={cn(
-              "space-y-4 p-4 rounded-lg bg-[#262626]",
-              dragOver && "border-2 border-dashed border-[#604abd] bg-white/20"
-            )}>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search collections"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-gray-700 text-white border-gray-600 pl-10"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 max-h-[500px] overflow-y-auto">
-                {filteredCollections.map(collection => (
-                  <CollectionCard
-                    key={`project-${project.id}-collection-${collection.id}`}
-                    collection={collection}
-                    deleteMode={deleteMode}
-                    onDelete={handleDeleteCollection}
-                    onEdit={onEditCollection}
-                  />
-                ))}
-              </div>
-
-              {(!filteredCollections || filteredCollections.length === 0) && (
-                <div className="text-center py-8 text-gray-400">
-                  {searchTerm 
-                    ? 'No collections found matching your search'
-                    : 'Drag and drop collection cards here'}
-                </div>
-              )}
+              <ProjectProgressBar collections={projectCollections} category="labeling" />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Rating</span>
+              </div>
+              <ProjectProgressBar collections={projectCollections} category="rating" />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Validated</span>
+              </div>
+              <ProjectProgressBar collections={projectCollections} category="validated" />
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className={cn(
+            "border-t border-[#404040] overflow-hidden transition-all duration-300",
+            isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          <div className="p-2 space-y-2">
+            <div className="flex items-center gap-1">
+              <Search className="w-3 h-3 text-gray-400" />
+              <Input
+                placeholder="Search collections..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 h-6 text-xs bg-[#1A1A1A] border-[#404040] text-white placeholder-gray-400"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {filteredCollections.map((collection) => (
+                <CollectionCard
+                  key={collection.id}
+                  collection={collection}
+                  deleteMode={deleteMode}
+                  onDelete={(id) => onDeleteCollection(id, project.id)}
+                  onEdit={onEditCollection}
+                  showFileSelectionButtons={showFileSelectionButtons}
+                  onFileSelect={onFileSelect}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="bg-[#1A1A1A] border border-[#604abd]">
+        <DialogContent 
+          className="bg-[#1E1E1E] text-white"
+          aria-describedby="edit-project-description"
+        >
           <DialogHeader>
-            <DialogTitle className="text-[#E5E7EB]">Edit Project</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-white">Edit Project</DialogTitle>
+            <DialogDescription id="edit-project-description" className="text-gray-400">
+              Update the project details below
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-[#E5E7EB]">Title</Label>
+              <Label htmlFor="title" className="text-white">Title</Label>
               <Input
                 id="title"
-                value={editData.name}
-                onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                className="bg-gray-700 text-white border-gray-600"
+                value={editData.title}
+                onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
+                className="bg-[#262626] border-[#404040] text-white"
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-[#E5E7EB]">Description</Label>
+              <Label htmlFor="description" className="text-white">Description</Label>
               <Textarea
                 id="description"
                 value={editData.description}
-                onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                className="bg-gray-700 text-white border-gray-600"
+                onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
+                className="bg-[#262626] border-[#404040] text-white min-h-[100px]"
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
-              className="bg-gray-700 text-white border-gray-600 hover:bg-gray-600"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleEditSave}
-              className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white hover:from-[#7059c4] hover:to-[#de65f7]"
+            <Button 
+              onClick={handleEditSubmit}
+              className="w-full bg-[#604abd] hover:bg-[#4c3a9e] text-white"
             >
               Save Changes
             </Button>
@@ -289,5 +267,5 @@ export const ProjectContainer: React.FC<ProjectContainerProps> = ({
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 } 

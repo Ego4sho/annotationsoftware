@@ -1,125 +1,133 @@
-import { Collection, ProjectFile } from '@/types/upload';
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
-import { format } from 'date-fns';
+import { Card } from "@/components/ui/card"
+import { Collection } from "@/types/upload"
+import { Button } from "@/components/ui/button"
+import { Pencil, Trash2 } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { ProgressBar } from "./ProgressBar"
 
 interface CollectionCardProps {
-  collection: Collection;
-  deleteMode: boolean;
-  onDelete: (id: string) => void;
-  onEdit: (collection: Collection) => void;
+  collection: Collection
+  deleteMode: boolean
+  onDelete: (id: string, projectId?: string) => void
+  onEdit: (collection: Collection) => void
+  showFileSelectionButtons?: boolean
+  onFileSelect?: (fileType: string, fileId: string) => void
 }
 
-const getProgressColor = (status: 'not-started' | 'in-progress' | 'completed') => {
-  switch (status) {
-    case 'completed':
-      return 'bg-green-500';
-    case 'in-progress':
-      return 'bg-yellow-500';
-    default:
-      return 'bg-gray-600';
+export function CollectionCard({
+  collection,
+  deleteMode,
+  onDelete,
+  onEdit,
+  showFileSelectionButtons = false,
+  onFileSelect
+}: CollectionCardProps) {
+  const getFileCount = (files: any[]) => {
+    return Array.isArray(files) ? files.length : 0
   }
-};
-
-const getProgressWidth = (status: 'not-started' | 'in-progress' | 'completed') => {
-  switch (status) {
-    case 'completed':
-      return '100%';
-    case 'in-progress':
-      return '50%';
-    default:
-      return '0%';
-  }
-};
-
-export const CollectionCard = ({ collection, deleteMode, onDelete, onEdit }: CollectionCardProps) => {
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click event
-    console.log('Deleting collection:', collection.id);
-    if (onDelete) {
-      onDelete(collection.id);
-    }
-  };
-
-  const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      id: collection.id,
-      type: 'collection'
-    }));
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  // Safely get file counts
-  const getFileCount = (type: 'video' | 'audio' | 'motion') => {
-    if (!collection.files || !collection.files[type]) {
-      return 0;
-    }
-    return collection.files[type].length;
-  };
 
   return (
-    <Card
-      className="bg-[#262626] border-[#604abd] p-3 cursor-pointer hover:bg-[#303030] relative"
-      onClick={() => onEdit(collection)}
-      draggable
-      onDragStart={handleDragStart}
-    >
-      {deleteMode && (
-        <Button
-          className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 hover:bg-red-600 z-10"
-          onClick={handleDelete}
-          type="button"
-        >
-          <Trash2 className="h-4 w-4 text-white" />
-        </Button>
+    <Card 
+      className={cn(
+        "bg-[#262626] border-[#604abd] p-4 space-y-4 transition-all duration-300 relative",
+        deleteMode && "border-red-500 hover:border-red-600",
+        !deleteMode && !showFileSelectionButtons && "cursor-grab active:cursor-grabbing"
       )}
-
-      <div className="space-y-3">
-        <div>
-          <h3 className="text-[#E5E7EB] font-medium text-base truncate">{collection.name}</h3>
-          <p className="text-gray-400 text-xs line-clamp-1 mt-0.5">{collection.description}</p>
-          <p className="text-gray-400 text-xs mt-0.5">
-            {format(collection.createdAt.toDate(), 'MMM d, yyyy')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-1 text-center">
-          <div className="space-y-0.5">
-            <p className="text-xs font-medium text-gray-300">Videos</p>
-            <p className="text-sm font-bold text-white">{getFileCount('video')}</p>
+      draggable={!deleteMode && !showFileSelectionButtons}
+      onDragStart={(e) => {
+        if (!deleteMode && !showFileSelectionButtons) {
+          e.dataTransfer.setData('application/json', JSON.stringify({
+            collectionId: collection.id,
+            sourceProjectId: collection.projectId || 'none'
+          }));
+        }
+      }}
+    >
+      <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded">Upload Page Collection Card</div>
+      <div className="space-y-2 mt-4">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-medium text-white">{collection.name}</h3>
+            <p className="text-sm text-gray-400">{collection.description}</p>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-xs font-medium text-gray-300">Audio</p>
-            <p className="text-sm font-bold text-white">{getFileCount('audio')}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-xs font-medium text-gray-300">Sensors</p>
-            <p className="text-sm font-bold text-white">{getFileCount('motion')}</p>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          {(['labeling', 'rating', 'validated'] as const).map(category => (
-            <div key={category} className="space-y-0.5">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-400 capitalize">{category}</span>
-                <span className="text-xs text-gray-400 capitalize">
-                  {collection.progress?.[category] || 'not-started'}
-                </span>
-              </div>
-              <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${getProgressColor(collection.progress?.[category] || 'not-started')}`}
-                  style={{
-                    width: getProgressWidth(collection.progress?.[category] || 'not-started')
-                  }}
-                />
-              </div>
+          {!showFileSelectionButtons && (
+            <div className="flex gap-2">
+              {deleteMode ? (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => onDelete(collection.id, collection.projectId)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onEdit(collection)}
+                  className="border-[#604abd] text-white hover:bg-[#604abd]/20"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
             </div>
+          )}
+        </div>
+
+        <div className="text-xs text-gray-500">
+          Created: {format(collection.createdAt.toDate(), 'MMM d, yyyy')}
+        </div>
+      </div>
+
+      {showFileSelectionButtons ? (
+        <div className="space-y-2">
+          {collection.files.video.map(file => (
+            <Button
+              key={file.id}
+              variant="outline"
+              className="w-full justify-start text-left text-sm text-gray-400 hover:text-white"
+              onClick={() => onFileSelect?.('video', file.id)}
+            >
+              {file.fileName}
+            </Button>
           ))}
         </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <div className="text-center p-1 bg-[#1A1A1A] rounded">
+            <div className="text-[10px] text-gray-400 mb-0.5">Video</div>
+            <div className="text-xs font-medium text-white">{getFileCount(collection.files.video)}</div>
+          </div>
+          <div className="text-center p-1 bg-[#1A1A1A] rounded">
+            <div className="text-[10px] text-gray-400 mb-0.5">Audio</div>
+            <div className="text-xs font-medium text-white">{getFileCount(collection.files.audio)}</div>
+          </div>
+          <div className="text-center p-1 bg-[#1A1A1A] rounded">
+            <div className="text-[10px] text-gray-400 mb-0.5">Motion</div>
+            <div className="text-xs font-medium text-white">{getFileCount(collection.files.motion)}</div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {(['labeling', 'rating', 'validated'] as const).map(category => (
+          <div key={category} className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400 capitalize">{category}</span>
+              <span className={cn(
+                "text-gray-400 capitalize",
+                collection.progress[category] === 'completed' && "text-green-500",
+                collection.progress[category] === 'in-progress' && "text-yellow-500",
+                collection.progress[category] === 'not-started' && "text-red-500"
+              )}>
+                {collection.progress[category]}
+              </span>
+            </div>
+            <ProgressBar status={collection.progress[category]} />
+          </div>
+        ))}
       </div>
     </Card>
   );
-};
+}

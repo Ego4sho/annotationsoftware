@@ -1,128 +1,114 @@
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Collection } from '@/types/upload';
-import { Project } from '../types';
-import { useAuth } from '@/lib/context/AuthContext';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase/config';
+import { Collection, Project } from '@/types';
 
-export const useCollectionsAndProjects = () => {
+export function useCollectionsAndProjects() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('useCollectionsAndProjects hook initialized');
+    const user = auth.currentUser;
+    console.log('Current user:', user?.email);
+
     if (!user) {
-      setCollections([]);
-      setProjects([]);
+      console.log('No authenticated user found');
       setLoading(false);
+      setError('User not authenticated');
       return;
     }
 
-    console.log('Setting up collections and projects subscriptions for user:', user.uid);
+    try {
+      console.log('Setting up Firebase listeners...');
 
-    // Subscribe to collections
-    const collectionsQuery = query(
-      collection(db, 'collections'),
-      where('userId', '==', user.uid),
-      where('deleted', 'in', [false, null]),
-      orderBy('updatedAt', 'desc')
-    );
+      // Collections listener
+      const collectionsQuery = query(
+        collection(db, 'collections'),
+        where('userId', '==', user.uid)
+      );
 
-    const unsubscribeCollections = onSnapshot(collectionsQuery, (snapshot) => {
-      // Use a Map to ensure unique collections by ID
-      const collectionsMap = new Map();
-      
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        console.log('Collection data:', { id: doc.id, deleted: data.deleted, projectId: data.projectId, ...data });
-        
-        // Only add if we haven't seen this ID before and it's not deleted
-        if (!collectionsMap.has(doc.id) && data.deleted !== true) {
-          collectionsMap.set(doc.id, {
-            ...data,
+      console.log('Collections query created:', {
+        path: collectionsQuery.path,
+        filters: collectionsQuery.filters
+      });
+
+      const unsubCollections = onSnapshot(collectionsQuery, 
+        (snapshot) => {
+          console.log('Collections snapshot received:', {
+            size: snapshot.size,
+            empty: snapshot.empty
+          });
+
+          const collectionsData = snapshot.docs.map(doc => ({
             id: doc.id,
-            files: {
-              video: data.files?.video || [],
-              audio: data.files?.audio || [],
-              motion: data.files?.motion || [],
-              aux1: data.files?.aux1 || [],
-              aux2: data.files?.aux2 || [],
-              aux3: data.files?.aux3 || [],
-              aux4: data.files?.aux4 || [],
-              aux5: data.files?.aux5 || []
-            },
-            progress: data.progress || {
-              labeling: 'not-started',
-              rating: 'not-started',
-              validated: 'not-started'
-            },
-            projectId: data.projectId || null,
-            deleted: false
-          } as Collection);
+            ...doc.data()
+          })) as Collection[];
+
+          console.log('Processed collections:', {
+            count: collectionsData.length,
+            sample: collectionsData.length > 0 ? collectionsData[0].id : 'none'
+          });
+
+          setCollections(collectionsData);
+        },
+        (error) => {
+          console.error('Collections listener error:', error);
+          setError(error.message);
         }
-      });
-      
-      const collectionsData = Array.from(collectionsMap.values());
-      console.log('Collections updated:', {
-        total: snapshot.docs.length,
-        active: collectionsData.length,
-        deleted: snapshot.docs.length - collectionsData.length
-      });
-      setCollections(collectionsData);
-      setLoading(false);
-    }, (error) => {
-      console.error('Error fetching collections:', error);
-      if (error.code === 'failed-precondition') {
-        console.error('Missing index for collections. Please create the required index.');
-      }
-      setLoading(false);
-    });
+      );
 
-    // Subscribe to projects
-    const projectsQuery = query(
-      collection(db, 'projects'),
-      where('userId', '==', user.uid),
-      where('deleted', '==', false),
-      orderBy('createdAt', 'desc')
-    );
+      // Projects listener
+      const projectsQuery = query(
+        collection(db, 'projects'),
+        where('userId', '==', user.uid)
+      );
 
-    const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-      const projectsMap = new Map();
-      
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        console.log('Project data:', { id: doc.id, ...data });
-        
-        if (!projectsMap.has(doc.id)) {
-          projectsMap.set(doc.id, {
-            ...data,
+      console.log('Projects query created:', {
+        path: projectsQuery.path,
+        filters: projectsQuery.filters
+      });
+
+      const unsubProjects = onSnapshot(projectsQuery,
+        (snapshot) => {
+          console.log('Projects snapshot received:', {
+            size: snapshot.size,
+            empty: snapshot.empty
+          });
+
+          const projectsData = snapshot.docs.map(doc => ({
             id: doc.id,
-            collections: data.collections || []
-          } as Project);
+            ...doc.data()
+          })) as Project[];
+
+          console.log('Processed projects:', {
+            count: projectsData.length,
+            sample: projectsData.length > 0 ? projectsData[0].id : 'none'
+          });
+
+          setProjects(projectsData);
+        },
+        (error) => {
+          console.error('Projects listener error:', error);
+          setError(error.message);
         }
-      });
-      
-      const projectsData = Array.from(projectsMap.values());
-      console.log('Projects updated:', projectsData);
-      setProjects(projectsData);
-    }, (error) => {
-      console.error('Error fetching projects:', error);
-      if (error.code === 'failed-precondition') {
-        console.error('Missing index for projects. Please create the required index for: userId, deleted, createdAt DESC');
-      }
-    });
+      );
 
-    return () => {
-      console.log('Cleaning up subscriptions');
-      unsubscribeCollections();
-      unsubscribeProjects();
-    };
-  }, [user]);
+      setLoading(false);
 
-  return {
-    collections,
-    projects,
-    loading
-  };
-}; 
+      return () => {
+        console.log('Cleaning up Firebase listeners');
+        unsubCollections();
+        unsubProjects();
+      };
+    } catch (err) {
+      console.error('Error in useCollectionsAndProjects:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setLoading(false);
+    }
+  }, []);
+
+  return { collections, projects, loading, error };
+} 

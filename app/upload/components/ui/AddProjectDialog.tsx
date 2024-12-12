@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,16 +35,20 @@ export const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
       >
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-2xl font-bold text-white">Add New Project</DialogTitle>
+          <DialogDescription id="project-dialog-description" className="text-gray-400">
+            Create a new project to organize your collections
+          </DialogDescription>
           <DialogClose className="absolute right-4 top-4 text-gray-400 hover:text-white">
             <X className="h-4 w-4" />
           </DialogClose>
         </DialogHeader>
 
         <ScrollArea className="flex-1 p-6">
-          <div className="space-y-6" id="project-dialog-description">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-white">Title</Label>
+              <Label htmlFor="title" className="text-white">Title</Label>
               <Input
+                id="title"
                 value={projectData.title}
                 onChange={(e) => onProjectDataChange({
                   ...projectData,
@@ -56,8 +60,9 @@ export const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-white">Description</Label>
+              <Label htmlFor="description" className="text-white">Description</Label>
               <Textarea
+                id="description"
                 value={projectData.description}
                 onChange={(e) => onProjectDataChange({
                   ...projectData,

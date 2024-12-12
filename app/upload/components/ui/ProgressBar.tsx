@@ -1,36 +1,49 @@
-import { Status } from '../../types'
+import { cn } from "@/lib/utils"
+
+type Status = 'not-started' | 'in-progress' | 'completed';
 
 interface ProgressBarProps {
-  status: Status
+  status: Status;
 }
 
-export const ProgressBar: React.FC<ProgressBarProps> = ({ status }) => {
-  const colors = {
-    'not-started': {
-      bg: 'bg-red-500',
-      width: '33%',
-      text: 'Not Started'
-    },
-    'in-progress': {
-      bg: 'bg-orange-500',
-      width: '66%',
-      text: 'In Progress'
-    },
-    'completed': {
-      bg: 'bg-green-500',
-      width: '100%',
-      text: 'Completed'
-    }
+const getStatusColor = (status: Status) => {
+  switch (status) {
+    case 'completed':
+      return 'bg-green-500';
+    case 'in-progress':
+      return 'bg-yellow-500';
+    case 'not-started':
+      return 'bg-red-500';
+    default:
+      return 'bg-gray-500';
   }
+};
 
+const getStatusWidth = (status: Status) => {
+  switch (status) {
+    case 'completed':
+      return 'w-full';
+    case 'in-progress':
+      return 'w-1/2';
+    case 'not-started':
+      return 'w-0';
+    default:
+      return 'w-0';
+  }
+};
+
+export function ProgressBar({ status }: ProgressBarProps) {
   return (
-    <div className="space-y-1">
-      <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-        <div 
-          className={`h-full ${colors[status].bg} transition-all duration-300`}
-          style={{ width: colors[status].width }}
-        />
-      </div>
+    <div className="h-1.5 bg-[#1A1A1A] rounded-full overflow-hidden">
+      <div
+        className={cn(
+          "h-full rounded-full transition-all duration-300",
+          getStatusColor(status)
+        )}
+        style={{
+          width: getStatusWidth(status)
+        }}
+      />
     </div>
-  )
+  );
 } 

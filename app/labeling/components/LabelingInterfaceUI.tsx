@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LabelingInterfaceProps } from '../types';
+import { useState, useRef } from 'react';
+import { FileSelectionDialog } from "@/app/labelinginterface/components/FileSelectionDialog"
 import { 
   Play, Pause, ChevronLeft, ChevronRight, Maximize2, RotateCcw, RotateCw, 
   ZoomIn, ZoomOut, Lock, Unlock, Plus, X, ArrowLeft, Search, Trash2, 
@@ -91,10 +93,15 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
   filteredCategories,
   handleTimelineLockToggle,
   handleFlagToggle,
+  projects,
+  collections,
+  onFileSelect,
 }) => {
+  const [isFileSelectionOpen, setIsFileSelectionOpen] = useState(false)
+
   return (
-    <div className="flex-1 bg-[#1A1A1A] text-white overflow-hidden flex flex-col h-screen">
-      <div className="flex flex-col h-full gap-4 p-4">
+    <div className="flex h-screen bg-black">
+      <div className="flex-1 flex flex-col gap-4 p-4">
         {/* Top Section */}
         <div className="h-[45%] flex gap-4">
           {/* Video Player */}
@@ -233,180 +240,184 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                   ${isStepTypeCardCollapsed ? 'w-[14px] overflow-hidden' : 'w-full'}`}>
                   {!isStepTypeCardCollapsed && (
                     <>
-                      {/* Session Selection */}
-                      <div className="p-2 border-b border-[#604abd]">
-                        <Select value={selectedSession.id} onValueChange={onSessionSelect}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select Session" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white text-gray-900">
-                            {sessions.map(session => (
-                              <SelectItem 
-                                key={session.id} 
-                                value={session.id}
-                                className="hover:bg-gray-100"
-                              >
-                                {session.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="mt-2 text-xs">
-                          <p className="text-white">Date: {selectedSession.date}</p>
-                          <p className="text-white">Duration: {selectedSession.duration}</p>
-                          <p className="text-white">File Types: {selectedSession.fileTypes.join(', ')}</p>
-                        </div>
-                      </div>
-
-                      {/* Step Type Content */}
-                      <div className="flex-1 flex flex-col overflow-hidden">
-                        <ScrollArea className="flex-1">
+                      {/* Left Sidebar */}
+                      <div className="w-[300px] h-full flex flex-col">
+                        <ScrollArea className="flex-1 h-full">
                           <div className="p-4 space-y-4">
-                            {/* Search Bar */}
-                            <div className="relative w-full">
-                              <Input
-                                type="text"
-                                placeholder={selectedCategory ? "Search steps..." : "Search categories..."}
-                                value={searchTerm}
-                                onChange={(e) => onSearchChange(e.target.value)}
-                                className="w-full pl-10 pr-10 focus:ring-[#604abd]"
-                              />
-                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#E5E7EB]" size={18} />
-                              {searchTerm && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                                  onClick={onSearchClear}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              )}
+                            {/* Session Selection */}
+                            <div className="w-full rounded-lg border border-indigo-500/20 bg-[#1E1E1E] p-4 space-y-4">
+                              <button 
+                                onClick={() => setIsFileSelectionOpen(true)}
+                                className="w-full py-2 px-4 bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white hover:from-[#7059c4] hover:to-[#de65f7] rounded-lg transition-all duration-300"
+                              >
+                                Select Files
+                              </button>
+                              <div className="h-[1px] bg-[#604abd]" />
+                              <div className="text-sm text-white/60 space-y-2">
+                                <div>Date: 2024-01-01</div>
+                                <div>Duration: 00:00:00</div>
+                                <div>File Types: video, audio</div>
+                              </div>
                             </div>
 
-                            {/* Category Actions - Only show when no category is selected */}
-                            {!selectedCategory && (
-                              <div className="flex space-x-4 w-full">
-                                <Button
-                                  onClick={onAddCategoryClick}
-                                  className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white flex-1"
-                                >
-                                  <Plus className="h-5 w-5 mr-2" /> Add Category
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  onClick={onStepDeleteModeToggle}
-                                  className="flex-1 bg-red-500 hover:bg-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" /> {isStepDeleteMode ? 'Done' : 'Delete'}
-                                </Button>
-                              </div>
-                            )}
-
-                            {/* Categories Grid */}
-                            <div className="grid grid-cols-2 gap-2">
-                              <AnimatePresence>
-                                {selectedCategory ? (
-                                  // Show steps view
-                                  <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="space-y-2 step-list-container col-span-2"
+                            {/* Step Type Content */}
+                            <div className="w-full flex-1 rounded-lg border border-indigo-500/20 bg-[#1E1E1E] p-4">
+                              {/* Search Bar */}
+                              <div className="relative w-full">
+                                <Input
+                                  type="text"
+                                  placeholder={selectedCategory ? "Search steps..." : "Search categories..."}
+                                  value={searchTerm}
+                                  onChange={(e) => onSearchChange(e.target.value)}
+                                  className="w-full pl-10 pr-10 focus:ring-[#604abd]"
+                                />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#E5E7EB]" size={18} />
+                                {searchTerm && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                                    onClick={onSearchClear}
                                   >
-                                    <div className="flex justify-between items-center mb-4">
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+
+                              {/* Category Actions */}
+                              {!selectedCategory && (
+                                <div className="flex space-x-4 w-full mt-4">
+                                  <Button
+                                    onClick={onAddCategoryClick}
+                                    className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white flex-1"
+                                  >
+                                    <Plus className="h-5 w-5 mr-2" /> Add Category
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    onClick={onStepDeleteModeToggle}
+                                    className="flex-1 bg-red-500 hover:bg-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" /> {isStepDeleteMode ? 'Done' : 'Delete'}
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Categories Grid */}
+                              <div className="grid grid-cols-2 gap-2 mt-4">
+                                <AnimatePresence>
+                                  {selectedCategory ? (
+                                    // Show steps view
+                                    <motion.div
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      exit={{ opacity: 0 }}
+                                      className="space-y-2 step-list-container col-span-2"
+                                    >
+                                      <div className="flex justify-between items-center mb-4">
+                                        <Button
+                                          variant="ghost"
+                                          onClick={handleBackToCategories}
+                                          className="bg-gray-700 text-white hover:bg-gray-600"
+                                        >
+                                          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                                        </Button>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={onStepDeleteModeToggle}
+                                          className="bg-red-500 hover:bg-red-600"
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" /> {isStepDeleteMode ? 'Done' : 'Delete'}
+                                        </Button>
+                                      </div>
+                                      {/* Steps List */}
+                                      {filteredCategories[0]?.steps.map(step => (
+                                        <motion.div
+                                          key={step}
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          exit={{ opacity: 0 }}
+                                          transition={{ duration: 0.2 }}
+                                        >
+                                          <Button
+                                            className="w-full justify-between relative bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
+                                            onClick={() => handleStepSelect(step)}
+                                          >
+                                            {step}
+                                            {isStepDeleteMode && (
+                                              <motion.div
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                exit={{ scale: 0 }}
+                                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center cursor-pointer"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteStep(step);
+                                                }}
+                                              >
+                                                <X className="h-4 w-4 text-white" />
+                                              </motion.div>
+                                            )}
+                                          </Button>
+                                        </motion.div>
+                                      ))}
+                                      {/* Add Step Button at bottom */}
                                       <Button
-                                        variant="ghost"
-                                        onClick={handleBackToCategories}
-                                        className="bg-gray-700 text-white hover:bg-gray-600"
+                                        className="w-full mt-4 bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
+                                        onClick={onAddStepClick}
                                       >
-                                        <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                                        <Plus className="h-4 w-4 mr-2" /> Add Step
                                       </Button>
-                                      <Button
-                                        variant="destructive"
-                                        onClick={onStepDeleteModeToggle}
-                                        className="bg-red-500 hover:bg-red-600"
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" /> {isStepDeleteMode ? 'Done' : 'Delete'}
-                                      </Button>
-                                    </div>
-                                    {/* Steps List */}
-                                    {filteredCategories[0]?.steps.map(step => (
+                                    </motion.div>
+                                  ) : (
+                                    // Show filtered categories grid
+                                    filteredCategories.map((category) => (
                                       <motion.div
-                                        key={step}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
+                                        key={category.id}
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.8 }}
                                         transition={{ duration: 0.2 }}
                                       >
-                                        <Button
-                                          className="w-full justify-between relative bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
-                                          onClick={() => handleStepSelect(step)}
+                                        <Card
+                                          className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] p-4 cursor-pointer relative"
+                                          onClick={() => onCategorySelect(category.id)}
                                         >
-                                          {step}
                                           {isStepDeleteMode && (
-                                            <motion.div
+                                            <motion.button
                                               initial={{ scale: 0 }}
                                               animate={{ scale: 1 }}
                                               exit={{ scale: 0 }}
-                                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center cursor-pointer"
+                                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center cursor-pointer z-10"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleDeleteStep(step);
+                                                handleDeleteCategory(category.id);
                                               }}
                                             >
                                               <X className="h-4 w-4 text-white" />
-                                            </motion.div>
+                                            </motion.button>
                                           )}
-                                        </Button>
+                                          <h3 className="font-medium mb-2 text-white text-center">{category.name}</h3>
+                                        </Card>
                                       </motion.div>
-                                    ))}
-                                    {/* Add Step Button at bottom */}
-                                    <Button
-                                      className="w-full mt-4 bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white"
-                                      onClick={onAddStepClick}
-                                    >
-                                      <Plus className="h-4 w-4 mr-2" /> Add Step
-                                    </Button>
-                                  </motion.div>
-                                ) : (
-                                  // Show filtered categories grid
-                                  filteredCategories.map((category) => (
-                                    <motion.div
-                                      key={category.id}
-                                      initial={{ opacity: 0, scale: 0.8 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      exit={{ opacity: 0, scale: 0.8 }}
-                                      transition={{ duration: 0.2 }}
-                                    >
-                                      <Card
-                                        className="bg-gradient-to-r from-[#604abd] to-[#d84bf7] p-4 cursor-pointer relative"
-                                        onClick={() => onCategorySelect(category.id)}
-                                      >
-                                        {isStepDeleteMode && (
-                                          <motion.button
-                                            initial={{ scale: 0 }}
-                                            animate={{ scale: 1 }}
-                                            exit={{ scale: 0 }}
-                                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center cursor-pointer z-10"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDeleteCategory(category.id);
-                                            }}
-                                          >
-                                            <X className="h-4 w-4 text-white" />
-                                          </motion.button>
-                                        )}
-                                        <h3 className="font-medium mb-2 text-white text-center">{category.name}</h3>
-                                      </Card>
-                                    </motion.div>
-                                  ))
-                                )}
-                              </AnimatePresence>
+                                    ))
+                                  )}
+                                </AnimatePresence>
+                              </div>
                             </div>
                           </div>
                         </ScrollArea>
                       </div>
+
+                      {/* Collapse button */}
+                      <motion.div
+                        className="w-full h-10 bg-gray-700 hover:bg-gray-600 flex items-center justify-center cursor-pointer transition-colors duration-300"
+                        onClick={onStepTypeCardCollapse}
+                        animate={{ rotate: isStepTypeCardCollapsed ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ChevronLeft className="h-5 w-5 text-white" />
+                      </motion.div>
                     </>
                   )}
                 </Card>
@@ -456,16 +467,6 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                     disabled
                   />
                 ))}
-
-                {/* Collapse button */}
-                <motion.div
-                  className="w-full h-10 bg-gray-700 hover:bg-gray-600 flex items-center justify-center cursor-pointer transition-colors duration-300"
-                  onClick={onStepTypeCardCollapse}
-                  animate={{ rotate: isStepTypeCardCollapsed ? 180 : 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <ChevronLeft className="h-5 w-5 text-white" />
-                </motion.div>
               </div>
             </div>
 
@@ -591,6 +592,14 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <FileSelectionDialog
+          open={isFileSelectionOpen}
+          onOpenChange={setIsFileSelectionOpen}
+          projects={projects}
+          collections={collections}
+          onFileSelect={onFileSelect}
+        />
       </div>
     </div>
   );

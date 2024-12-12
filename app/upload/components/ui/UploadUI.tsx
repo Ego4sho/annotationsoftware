@@ -251,7 +251,8 @@ export const UploadUI: React.FC<UploadUIProps> = ({
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Projects Grid */}
+        <div className="grid auto-rows-fr grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
             <ProjectContainer
               key={project.id}
@@ -261,7 +262,7 @@ export const UploadUI: React.FC<UploadUIProps> = ({
               onDelete={onDeleteProject}
               onEditCollection={handleEditCollection}
               onCollectionMove={onCollectionMove}
-              onDeleteCollection={handleDeleteCollection}
+              onDeleteCollection={onDeleteCollection}
               onEditProject={onEditProject}
             />
           ))}

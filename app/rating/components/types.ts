@@ -34,4 +34,10 @@ export interface Project {
   description: string
   createdDate: Date
   collections: Collection[]
+}
+
+export interface TimelineRow {
+  id: string;
+  label: string;
+  type: 'video' | 'audio' | 'channel';
 } 

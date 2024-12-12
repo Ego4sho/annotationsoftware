@@ -1,7 +1,16 @@
 import { Collection as FirebaseCollection, Project as FirebaseProject } from '@/types/upload';
 import { Timestamp } from 'firebase/firestore';
 
-export type Status = 'not-started' | 'in-progress' | 'completed'
+export type Status = 'not-started' | 'in-progress' | 'completed';
+
+export type ProgressCategory = 'labeling' | 'rating' | 'validated';
+
+export interface ProgressCounts {
+  total: number;
+  notStarted: number;
+  inProgress: number;
+  completed: number;
+}
 
 export interface Progress {
   labeling: Status

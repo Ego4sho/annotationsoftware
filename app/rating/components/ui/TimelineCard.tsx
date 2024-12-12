@@ -5,8 +5,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { TimelineRow } from '../types';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { StrictModeDroppable } from './StrictModeDroppable';
+import { DragDropContext, Draggable } from 'react-beautiful-dnd';
+import { StrictModeDroppable } from '@/components/ui/strict-mode-droppable';
 
 interface TimelineCardProps {
   timelineRows: TimelineRow[];

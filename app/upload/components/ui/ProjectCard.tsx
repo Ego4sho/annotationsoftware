@@ -3,15 +3,33 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { format } from 'date-fns';
+import { ProgressBar } from "./ProgressBar";
+import { ProgressCategory } from "../../types";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface ProjectCardProps {
   project: Project;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  onEdit?: (project: Project) => void;
+  onDelete?: (id: string) => void;
   deleteMode?: boolean;
 }
 
+const getProgressCounts = (project: Project, category: ProgressCategory) => {
+  const collections = project.collections || [];
+  const total = collections.length;
+  
+  return {
+    total,
+    notStarted: collections.filter(c => c.progress?.[category] === 'not-started').length,
+    inProgress: collections.filter(c => c.progress?.[category] === 'in-progress').length,
+    completed: collections.filter(c => c.progress?.[category] === 'completed').length
+  };
+};
+
 export const ProjectCard = ({ project, onEdit, onDelete, deleteMode = false }: ProjectCardProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDelete) {
@@ -19,11 +37,22 @@ export const ProjectCard = ({ project, onEdit, onDelete, deleteMode = false }: P
     }
   };
 
+  const handleClick = () => {
+    setIsExpanded(!isExpanded);
+    onEdit?.(project);
+  };
+
+  const categories: ProgressCategory[] = ['labeling', 'rating', 'validated'];
+
   return (
     <Card
-      className="bg-[#262626] border-[#604abd] p-3 cursor-pointer hover:bg-[#303030] relative h-[200px] flex flex-col"
-      onClick={() => onEdit?.(project)}
+      className={cn(
+        "bg-[#262626] border-[#604abd] p-3 cursor-pointer hover:bg-[#303030] relative flex flex-col transition-all duration-300",
+        isExpanded ? "h-[300px]" : "h-[200px]"
+      )}
+      onClick={handleClick}
     >
+      <div className="absolute top-0 left-0 bg-red-500 text-white text-xs px-1 rounded">Upload Page Project Card</div>
       {deleteMode && (
         <Button
           className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 hover:bg-red-600 z-10"
@@ -35,7 +64,7 @@ export const ProjectCard = ({ project, onEdit, onDelete, deleteMode = false }: P
       )}
 
       <div className="flex flex-col h-full">
-        <div className="flex-grow">
+        <div className="flex-grow mt-4">
           <h3 className="text-[#E5E7EB] font-medium text-base truncate">{project.name}</h3>
           <p className="text-gray-400 text-xs line-clamp-2 mt-0.5">{project.description}</p>
           <p className="text-gray-400 text-xs mt-1">
@@ -66,29 +95,44 @@ export const ProjectCard = ({ project, onEdit, onDelete, deleteMode = false }: P
           </div>
         </div>
 
-        <div className="space-y-1.5 mt-2">
-          <div className="space-y-0.5">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">Progress</span>
-              <span className="text-xs text-gray-400 capitalize">{project.status}</span>
-            </div>
-            <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  project.status === 'ready' ? 'bg-green-500' :
-                  project.status === 'processing' ? 'bg-yellow-500' :
-                  project.status === 'error' ? 'bg-red-500' :
-                  'bg-gray-600'
-                }`}
-                style={{
-                  width: project.status === 'ready' ? '100%' :
-                         project.status === 'processing' ? '50%' :
-                         project.status === 'error' ? '100%' :
-                         '0%'
-                }}
-              />
-            </div>
-          </div>
+        <div className={`space-y-3 mt-4 transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+          {categories.map(category => {
+            const counts = getProgressCounts(project, category);
+            return (
+              <div key={category} className="space-y-1">
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span className="capitalize">{category}</span>
+                  <div className="flex gap-2">
+                    <span className="text-red-500">{counts.notStarted} Not Started</span>
+                    <span>•</span>
+                    <span className="text-yellow-500">{counts.inProgress} In Progress</span>
+                    <span>•</span>
+                    <span className="text-green-500">{counts.completed} Completed</span>
+                  </div>
+                </div>
+                <div className="h-1.5 bg-[#1A1A1A] rounded-full overflow-hidden flex">
+                  {counts.notStarted > 0 && (
+                    <div
+                      className="h-full bg-red-500 transition-all duration-300"
+                      style={{ width: `${(counts.notStarted / counts.total) * 100}%` }}
+                    />
+                  )}
+                  {counts.inProgress > 0 && (
+                    <div
+                      className="h-full bg-yellow-500 transition-all duration-300"
+                      style={{ width: `${(counts.inProgress / counts.total) * 100}%` }}
+                    />
+                  )}
+                  {counts.completed > 0 && (
+                    <div
+                      className="h-full bg-green-500 transition-all duration-300"
+                      style={{ width: `${(counts.completed / counts.total) * 100}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </Card>

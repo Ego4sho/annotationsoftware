@@ -18,7 +18,7 @@ const getProgressColor = (status: 'not-started' | 'in-progress' | 'completed') =
     case 'in-progress':
       return 'bg-yellow-500';
     default:
-      return 'bg-gray-600';
+      return 'bg-red-500';
   }
 };
 
@@ -27,9 +27,9 @@ const getProgressWidth = (status: 'not-started' | 'in-progress' | 'completed') =
     case 'completed':
       return '100%';
     case 'in-progress':
-      return '50%';
+      return '66%';
     default:
-      return '0%';
+      return '33%';
   }
 };
 

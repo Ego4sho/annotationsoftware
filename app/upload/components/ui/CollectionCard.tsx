@@ -112,19 +112,28 @@ export function CollectionCard({
 
       <div className="space-y-2">
         {(['labeling', 'rating', 'validated'] as const).map(category => (
-          <div key={category} className="space-y-1">
-            <div className="flex justify-between text-xs">
+          <div key={category} className="space-y-0.5">
+            <div className="flex justify-between text-[10px]">
               <span className="text-gray-400 capitalize">{category}</span>
-              <span className={cn(
-                "text-gray-400 capitalize",
-                collection.progress[category] === 'completed' && "text-green-500",
-                collection.progress[category] === 'in-progress' && "text-yellow-500",
-                collection.progress[category] === 'not-started' && "text-red-500"
-              )}>
+              <span className="text-gray-400 capitalize">
                 {collection.progress[category]}
               </span>
             </div>
-            <ProgressBar status={collection.progress[category]} />
+            <div className="h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  "h-full transition-all duration-300",
+                  collection.progress[category] === 'completed' && "bg-green-500",
+                  collection.progress[category] === 'in-progress' && "bg-yellow-500",
+                  collection.progress[category] === 'not-started' && "bg-red-500"
+                )}
+                style={{
+                  width: collection.progress[category] === 'completed' ? '100%' :
+                         collection.progress[category] === 'in-progress' ? '66%' :
+                         collection.progress[category] === 'not-started' ? '33%' : '0%'
+                }}
+              />
+            </div>
           </div>
         ))}
       </div>

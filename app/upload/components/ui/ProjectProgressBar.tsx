@@ -24,11 +24,11 @@ export function ProjectProgressBar({ collections, category }: ProjectProgressBar
   if (completed > 0) statuses.push({ type: 'completed', count: completed });
 
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-sm text-gray-400">
-        <div className="flex gap-2">
+    <div className="space-y-0.5">
+      <div className="flex justify-between text-[10px] text-gray-400">
+        <div className="flex gap-1">
           {statuses.map((status, index) => (
-            <div key={status.type} className="flex gap-2">
+            <div key={status.type} className="flex gap-1">
               <span className={
                 status.type === 'completed' ? 'text-green-500' :
                 status.type === 'in-progress' ? 'text-yellow-500' :
@@ -36,12 +36,12 @@ export function ProjectProgressBar({ collections, category }: ProjectProgressBar
               }>
                 {status.count} {status.type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
               </span>
-              {index < statuses.length - 1 && <span>•</span>}
+              {index < statuses.length - 1 && <span className="text-[8px]">•</span>}
             </div>
           ))}
         </div>
       </div>
-      <div className="h-1.5 bg-[#1A1A1A] rounded-full overflow-hidden flex">
+      <div className="h-1 bg-[#1A1A1A] rounded-full overflow-hidden flex">
         {notStarted > 0 && (
           <div
             className="h-full bg-red-500 transition-all duration-300"

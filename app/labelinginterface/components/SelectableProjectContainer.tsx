@@ -59,15 +59,6 @@ export function SelectableProjectContainer({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            className="p-2 hover:bg-[#404040] rounded-full transition-colors"
-            onClick={(e) => {
-              e.stopPropagation()
-              // Handle edit
-            }}
-          >
-            <Pencil className="h-4 w-4 text-gray-400" />
-          </button>
           <button
             className="p-2 hover:bg-[#404040] rounded-full transition-colors"
             onClick={(e) => {

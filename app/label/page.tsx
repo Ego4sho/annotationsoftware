@@ -60,6 +60,7 @@ export default function LabelPage() {
         className="max-w-4xl bg-[#1A1A1A] border-[#604abd] p-6"
         aria-describedby="label-dialog-description"
       >
+        <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-1 rounded">Test Label 3</div>
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white">Label Files</DialogTitle>
           <DialogDescription id="label-dialog-description" className="text-gray-400">

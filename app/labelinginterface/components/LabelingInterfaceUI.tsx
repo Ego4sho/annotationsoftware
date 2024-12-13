@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { FileSelectionDialog } from "./FileSelectionDialog"
+import { VideoPlayerContainer } from "@/app/labeling/components/VideoPlayerContainer"
 
 interface LabelingInterfaceProps {
   onFileSelect: (fileType: string, fileId: string) => void
@@ -18,15 +19,17 @@ export function LabelingInterfaceUI({
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="w-full rounded-lg border border-indigo-500/20 bg-[#1E1E1E] p-4 space-y-4">
-        <Button 
-          onClick={() => setIsFileSelectionOpen(true)}
-          className="w-full py-2 px-4 bg-gradient-to-r from-[#604abd] to-[#d84bf7] text-white hover:from-[#7059c4] hover:to-[#de65f7] rounded-lg transition-all duration-300"
-        >
-          Select Files
-        </Button>
+    <div className="flex h-screen bg-black">
+      <div className="flex-1 flex flex-col gap-4 p-4">
+        {/* Top Section */}
+        <div className="h-[45%] flex gap-4">
+          {/* Video Player */}
+          <div className="w-1/2">
+            <VideoPlayerContainer />
+          </div>
+        </div>
       </div>
+      <div className="absolute top-0 left-0 bg-red-500 text-white text-xs px-1 rounded">Test Label 1</div>
 
       <FileSelectionDialog
         open={isFileSelectionOpen}

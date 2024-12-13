@@ -16,6 +16,7 @@ import {
   ChevronDown, ChevronUp, Flag 
 } from 'lucide-react';
 import { TimelineCard } from '@/app/rating/components/ui/TimelineCard';
+import { VideoPlayerContainer } from '@/app/labeling/components/VideoPlayerContainer';
 
 // Define allChannels constant
 const channelArray = Array.from({ length: 126 }, (_, i) => `Channel ${i + 1}`);
@@ -110,76 +111,7 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
               <div className="flex-1 flex flex-col">
                 {/* Video Container */}
                 <div className="relative flex-1">
-                  <video 
-                    ref={videoRef}
-                    className="w-full h-full object-contain"
-                  />
-                  {/* Video Controls */}
-                  <div className="absolute bottom-8 left-0 right-0">
-                    <div className="p-2">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex space-x-2">
-                          <Button size="sm" variant="ghost" className="text-[#E5E7EB] hover:text-[#604abd]">
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={onPlayPause}
-                            className="text-[#E5E7EB] hover:text-[#604abd]"
-                          >
-                            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-[#E5E7EB] hover:text-[#604abd]">
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-mono text-white">{formatTimecode(currentTime)}</span>
-                          <Select
-                            value={timeDisplayMode}
-                            onValueChange={onTimeDisplayModeToggle}
-                          >
-                            <SelectTrigger className="w-[90px] h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white text-gray-900">
-                              <SelectItem
-                                value="time"
-                                className="hover:bg-gray-100"
-                              >
-                                Time
-                              </SelectItem>
-                              <SelectItem
-                                value="frame"
-                                className="hover:bg-gray-100"
-                              >
-                                Frame
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="relative h-6 rounded-lg border border-[#404040] shadow-md shadow-black/25">
-                        <span className="absolute left-0 top-0 bottom-0 flex items-center px-1 text-white">V</span>
-                        <div
-                          className="absolute top-0 left-6 h-full bg-[#604abd] opacity-50"
-                          style={{ width: `${(currentTime / duration) * 100}%` }}
-                        />
-                        <div
-                          className="absolute top-0 left-6 w-px h-full bg-[#604abd]"
-                          style={{ left: `${(currentTime / duration) * 100}%` }}
-                        />
-                        {Array.from({ length: Math.ceil(duration / 5) }).map((_, index) => (
-                          <div
-                            key={index}
-                            className="absolute top-0 w-px h-2 bg-[#604abd]/50"
-                            style={{ left: `${(index * 5 / duration) * 100}%` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <VideoPlayerContainer />
                 </div>
               </div>
             </Card>
@@ -467,6 +399,23 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                     disabled
                   />
                 ))}
+
+                {/* Collapse Button - Moved to bottom */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`
+                    text-white w-10 h-10 transition-all duration-200
+                    hover:bg-white/10 mt-auto
+                  `}
+                  onClick={onStepTypeCardCollapse}
+                >
+                  <ChevronLeft 
+                    className={`h-5 w-5 transition-transform duration-300 ${
+                      isStepTypeCardCollapsed ? 'rotate-180' : ''
+                    }`}
+                  />
+                </Button>
               </div>
             </div>
 
@@ -601,6 +550,7 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
           onFileSelect={onFileSelect}
         />
       </div>
+      <div className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">Test Label 2</div>
     </div>
   );
 }; 

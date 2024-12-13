@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { VideoPlayer } from './VideoPlayer';
 import { VideoControls } from './VideoControls';
 
@@ -16,20 +16,31 @@ export function VideoPlayerContainer({ videoUrl }: VideoPlayerContainerProps) {
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [isSeeking, setIsSeeking] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
+    const handleTimeUpdate = () => {
+      if (!isSeeking) {
+        setCurrentTime(video.currentTime);
+      }
+    };
     const handleDurationChange = () => setDuration(video.duration);
     const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
     const handleVolumeChange = () => {
       setVolume(video.volume);
       setIsMuted(video.muted);
     };
     const handleRateChange = () => setPlaybackRate(video.playbackRate);
+    const handleSeeking = () => setIsSeeking(true);
+    const handleSeeked = () => {
+      setIsSeeking(false);
+    };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('durationchange', handleDurationChange);
@@ -37,6 +48,11 @@ export function VideoPlayerContainer({ videoUrl }: VideoPlayerContainerProps) {
     video.addEventListener('pause', handlePause);
     video.addEventListener('volumechange', handleVolumeChange);
     video.addEventListener('ratechange', handleRateChange);
+    video.addEventListener('seeking', handleSeeking);
+    video.addEventListener('seeked', handleSeeked);
+
+    // Set initial state
+    video.playbackRate = playbackRate;
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -45,8 +61,10 @@ export function VideoPlayerContainer({ videoUrl }: VideoPlayerContainerProps) {
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('volumechange', handleVolumeChange);
       video.removeEventListener('ratechange', handleRateChange);
+      video.removeEventListener('seeking', handleSeeking);
+      video.removeEventListener('seeked', handleSeeked);
     };
-  }, []);
+  }, [isSeeking]);
 
   useEffect(() => {
     console.log('VideoPlayerContainer - Video URL changed:', videoUrl);
@@ -58,21 +76,30 @@ export function VideoPlayerContainer({ videoUrl }: VideoPlayerContainerProps) {
     }
   }, [videoUrl]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
     if (video.paused) {
-      video.play();
+      video.play().catch(console.error);
     } else {
+      // Store current time before pausing
+      const currentTime = video.currentTime;
       video.pause();
+      // Force the video to maintain the current frame
+      requestAnimationFrame(() => {
+        if (video && video.paused) {
+          video.currentTime = currentTime;
+        }
+      });
     }
-  };
+  }, []);
 
   const handleSeek = (time: number) => {
     const video = videoRef.current;
     if (!video) return;
 
+    setIsSeeking(true);
     video.currentTime = time;
   };
 

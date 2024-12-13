@@ -7,8 +7,6 @@ import { Progress } from "@/components/ui/progress"
 import { useToast } from '@/components/ui/use-toast'
 import { UploadFile, FileType, Collection, ProjectFile } from '@/types/upload'
 import { Button } from "@/components/ui/button"
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
-import { useAuth } from '@/lib/context/AuthContext'
 
 const getMimeTypes = (fileType: string): Accept => {
   switch (fileType) {
@@ -64,18 +62,8 @@ export const FileUploadArea = ({
 }: FileUploadAreaProps) => {
   const { getFiles, addFile, removeFile, updateFileProgress } = useUploadState();
   const { toast } = useToast();
-  const { user } = useAuth();
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to upload files",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const onDrop = useCallback((acceptedFiles: File[]) => {
     // Check if we've already reached the max files limit including saved files
     const savedFiles = collection?.files?.[fileType] || [];
     const uploadingFiles = getFiles(collectionId).filter(f => f.type === fileType && f.status !== 'complete');
@@ -94,71 +82,34 @@ export const FileUploadArea = ({
     // Only accept files up to the remaining slots
     const filesToUpload = acceptedFiles.slice(0, remainingSlots);
 
-    filesToUpload.forEach(async (file) => {
+    filesToUpload.forEach(file => {
       const fileId = uuidv4();
       addFile(collectionId, {
         id: fileId,
         file,
         type: fileType,
         progress: 0,
-        status: 'uploading'
+        status: 'pending'
       });
-
-      try {
-        // Create storage reference
-        const storage = getStorage();
-        const storagePath = `users/${user.uid}/collections/${collectionId}/${fileType}/${fileId}`;
-        const fileRef = ref(storage, storagePath);
-
-        // Start upload
-        const uploadTask = uploadBytesResumable(fileRef, file);
-
-        // Monitor upload progress
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            updateFileProgress(collectionId, fileId, progress);
-          },
-          (error) => {
-            console.error('Upload error:', error);
-            updateFileProgress(collectionId, fileId, 0, 'error');
-            toast({
-              title: "Error",
-              description: `Failed to upload ${file.name}`,
-              variant: "destructive"
-            });
-          },
-          async () => {
-            try {
-              // Upload completed successfully
-              updateFileProgress(collectionId, fileId, 100, 'complete');
-              toast({
-                title: "Success",
-                description: `${file.name} uploaded successfully`,
-              });
-            } catch (error) {
-              console.error('Error getting download URL:', error);
-              updateFileProgress(collectionId, fileId, 0, 'error');
-              toast({
-                title: "Error",
-                description: `Failed to process ${file.name}`,
-                variant: "destructive"
-              });
-            }
-          }
-        );
-      } catch (error) {
-        console.error('Upload error:', error);
-        updateFileProgress(collectionId, fileId, 0, 'error');
-        toast({
-          title: "Error",
-          description: `Failed to upload ${file.name}`,
-          variant: "destructive"
-        });
-      }
+      
+      // Simulate upload progress
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        if (progress <= 100) {
+          updateFileProgress(collectionId, fileId, progress);
+        }
+        if (progress === 100) {
+          clearInterval(interval);
+          updateFileProgress(collectionId, fileId, 100, 'complete');
+          toast({
+            title: "Success",
+            description: `${file.name} uploaded successfully`,
+          });
+        }
+      }, 500);
     });
-  }, [addFile, collectionId, fileType, updateFileProgress, toast, maxFiles, collection, user]);
+  }, [addFile, collectionId, fileType, updateFileProgress, toast, maxFiles, collection]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

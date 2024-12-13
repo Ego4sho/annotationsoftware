@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { formatTime } from '../utils/formatTime';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 
 interface VideoControlsProps {
   isPlaying: boolean;
@@ -38,8 +38,6 @@ export function VideoControls({
   onPlaybackRateChange,
 }: VideoControlsProps) {
   const [showFrames, setShowFrames] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const timelineRef = useRef<HTMLDivElement>(null);
   const FPS = 30; // Assuming 30 frames per second, adjust as needed
 
   const handleProgressChange = (value: number[]) => {
@@ -59,39 +57,55 @@ export function VideoControls({
     setShowFrames(!showFrames);
   };
 
-  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!timelineRef.current) return;
-    
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = x / rect.width;
-    const newTime = percentage * duration;
-    onSeek(Math.max(0, Math.min(duration, newTime)));
-  };
-
-  const handleTimelineDrag = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging || !timelineRef.current) return;
-    
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = x / rect.width;
-    const newTime = percentage * duration;
-    onSeek(Math.max(0, Math.min(duration, newTime)));
-  };
-
   const handleFrameStep = (forward: boolean) => {
     const frameTime = 1 / FPS;
-    const newTime = currentTime + (forward ? frameTime : -frameTime);
-    onSeek(Math.max(0, Math.min(duration, newTime)));
+    onSeek(currentTime + (forward ? frameTime : -frameTime));
   };
 
+  const handlePlayPauseClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Add a small delay to ensure the video state is updated properly
+    setTimeout(() => {
+      onPlayPause();
+    }, 0);
+  }, [onPlayPause]);
+
   return (
-    <div className="p-2 space-y-2 bg-[#1E1E1E]">
-      <div className="flex items-center justify-between h-6">
+    <div className="p-2 space-y-1 bg-[#1E1E1E]">
+      {/* Timeline scrubber */}
+      <div className="relative h-8 bg-[#2A2A2A] rounded-sm group">
+        {/* Progress bar */}
+        <div 
+          className="absolute top-0 left-0 h-full bg-[#604abd] opacity-30"
+          style={{ width: `${(currentTime / (duration || 100)) * 100}%` }}
+        />
+        {/* Playhead line */}
+        <div 
+          className="absolute top-0 h-full w-0.5 bg-[#604abd] z-10"
+          style={{ left: `${(currentTime / (duration || 100)) * 100}%` }}
+        />
+        {/* Interactive slider */}
+        <Slider
+          value={[currentTime]}
+          min={0}
+          max={duration || 100}
+          step={1/FPS} // Frame-by-frame precision
+          onValueChange={handleProgressChange}
+          className="absolute inset-0 opacity-0"
+        />
+        {/* Time tooltip */}
+        <div className="absolute left-0 right-0 -top-6 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-xs text-white/80 py-1 px-2 rounded pointer-events-none">
+          {showFrames ? formatFrameCount(currentTime) : formatTime(currentTime)}
+        </div>
+      </div>
+
+      {/* Controls row */}
+      <div className="flex items-center h-8 gap-1">
         <div className="flex items-center gap-1">
           <button
-            onClick={onPlayPause}
-            className="p-0.5 hover:bg-black/20 rounded text-white/80"
+            onClick={handlePlayPauseClick}
+            className="p-1 hover:bg-black/20 rounded text-white/80"
           >
             {isPlaying ? (
               <Pause className="w-4 h-4" />
@@ -100,104 +114,65 @@ export function VideoControls({
             )}
           </button>
           <button 
-            className="p-0.5 hover:bg-black/20 rounded text-white/80"
             onClick={() => handleFrameStep(false)}
+            className="p-1 hover:bg-black/20 rounded text-white/80"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button 
-            className="p-0.5 hover:bg-black/20 rounded text-white/80"
             onClick={() => handleFrameStep(true)}
+            className="p-1 hover:bg-black/20 rounded text-white/80"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
-          <button className="p-0.5 hover:bg-black/20 rounded text-white/80">
+          <button className="p-1 hover:bg-black/20 rounded text-white/80">
             <ChevronsRight className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-1 ml-2">
-            <button
-              onClick={onMuteToggle}
-              className="p-0.5 hover:bg-black/20 rounded text-white/80"
-            >
-              {isMuted ? (
-                <VolumeX className="w-4 h-4" />
-              ) : (
-                <Volume2 className="w-4 h-4" />
-              )}
-            </button>
-            <div className="w-16">
-              <Slider
-                value={[isMuted ? 0 : volume]}
-                min={0}
-                max={1}
-                step={0.1}
-                onValueChange={handleVolumeChange}
-                className="h-1"
-              />
-            </div>
-          </div>
         </div>
-        <button
-          onClick={toggleTimeDisplay}
-          className="text-white/80 text-xs font-mono hover:text-white transition-colors duration-200 cursor-pointer bg-black/20 px-1.5 py-0.5 rounded"
-        >
-          {showFrames ? formatFrameCount(currentTime) : formatTime(currentTime)}
-        </button>
-        <Select
-          value={playbackRate.toString()}
-          onValueChange={(value) => onPlaybackRateChange(parseFloat(value))}
-        >
-          <SelectTrigger className="w-16 h-6 bg-white text-black border-0 text-xs">
-            <SelectValue placeholder="Speed" />
-          </SelectTrigger>
-          <SelectContent className="bg-white text-black">
-            <SelectItem value="0.5">0.5x</SelectItem>
-            <SelectItem value="1">1x</SelectItem>
-            <SelectItem value="1.5">1.5x</SelectItem>
-            <SelectItem value="2">2x</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1">
-        {/* Timeline */}
-        <div 
-          ref={timelineRef}
-          className="relative h-8 bg-[#2A2A2A] rounded cursor-pointer select-none"
-          onClick={handleTimelineClick}
-          onMouseDown={() => setIsDragging(true)}
-          onMouseUp={() => setIsDragging(false)}
-          onMouseLeave={() => setIsDragging(false)}
-          onMouseMove={handleTimelineDrag}
-        >
-          {/* Time markers */}
-          <div className="absolute top-0 left-0 right-0 h-3 flex">
-            {Array.from({ length: 11 }).map((_, i) => (
-              <div key={i} className="flex-1 border-l border-gray-600 h-1.5">
-                <div className="text-[8px] text-gray-400 mt-1.5 -ml-[8px]">
-                  {formatTime(duration * (i / 10))}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {/* Playhead */}
-          <div 
-            className="absolute bottom-0 w-0.5 h-full bg-[#604abd] pointer-events-none"
-            style={{ left: `${(currentTime / duration) * 100}%` }}
+
+        <div className="flex items-center gap-1 ml-2">
+          <button
+            onClick={onMuteToggle}
+            className="p-1 hover:bg-black/20 rounded text-white/80"
           >
-            <div className="absolute -top-1 -left-1.5 w-3 h-3 bg-[#604abd] rounded-full" />
+            {isMuted ? (
+              <VolumeX className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+          </button>
+          <div className="w-20">
+            <Slider
+              value={[isMuted ? 0 : volume]}
+              min={0}
+              max={1}
+              step={0.1}
+              onValueChange={handleVolumeChange}
+            />
           </div>
-          
-          {/* Progress bar */}
-          <div 
-            className="absolute bottom-0 left-0 h-5 bg-[#604abd] opacity-20"
-            style={{ width: `${(currentTime / duration) * 100}%` }}
-          />
         </div>
-        
-        <div className="flex justify-between text-[10px] text-white/60">
-          <span>{showFrames ? formatFrameCount(currentTime) : formatTime(currentTime)}</span>
-          <span>{showFrames ? formatFrameCount(duration) : formatTime(duration)}</span>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={toggleTimeDisplay}
+            className="text-xs font-mono text-white/80 hover:text-white bg-black/20 px-2 py-1 rounded"
+          >
+            {showFrames ? formatFrameCount(currentTime) : formatTime(currentTime)}
+          </button>
+          <Select
+            value={playbackRate.toString()}
+            onValueChange={(value) => onPlaybackRateChange(parseFloat(value))}
+          >
+            <SelectTrigger className="h-6 w-16 bg-black/20 text-white/80 border-0 text-xs">
+              <SelectValue placeholder="Speed" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1E1E1E] text-white/80 border border-white/10">
+              <SelectItem value="0.5">0.5x</SelectItem>
+              <SelectItem value="1">1x</SelectItem>
+              <SelectItem value="1.5">1.5x</SelectItem>
+              <SelectItem value="2">2x</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

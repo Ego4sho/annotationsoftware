@@ -14,44 +14,12 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(
       if (videoUrl) {
         setIsLoading(true);
         setError(null);
-        
-        // Validate URL
-        try {
-          new URL(videoUrl);
-        } catch (e) {
-          console.error('Invalid video URL:', e);
-          setError('Invalid video URL format');
-          setIsLoading(false);
-          return;
-        }
       }
     }, [videoUrl]);
 
     const handleError = (e: any) => {
-      const videoElement = e.target as HTMLVideoElement;
-      console.error('Video error details:', {
-        error: e,
-        networkState: videoElement.networkState,
-        readyState: videoElement.readyState,
-        currentSrc: videoElement.currentSrc,
-        videoUrl: videoUrl
-      });
-
-      let errorMessage = 'Error loading video. Please try again.';
-      
-      switch (videoElement.networkState) {
-        case HTMLMediaElement.NETWORK_EMPTY:
-          errorMessage = 'Video source not initialized';
-          break;
-        case HTMLMediaElement.NETWORK_NO_SOURCE:
-          errorMessage = 'Video source not found or not supported';
-          break;
-        case HTMLMediaElement.NETWORK_LOADING:
-          errorMessage = 'Network error while loading video';
-          break;
-      }
-
-      setError(errorMessage);
+      console.error('Video error:', e);
+      setError('Error loading video. Please try again.');
       setIsLoading(false);
     };
 
@@ -59,6 +27,12 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(
       console.log('Video loaded successfully');
       setIsLoading(false);
       setError(null);
+      
+      // Ensure video is visible and ready for frame display
+      const video = ref as React.MutableRefObject<HTMLVideoElement>;
+      if (video.current) {
+        video.current.style.opacity = '1';
+      }
     };
 
     return (
@@ -69,12 +43,30 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(
               <video
                 ref={ref}
                 src={videoUrl}
-                className="max-w-full max-h-full object-contain"
+                className="max-w-[90%] max-h-[90%] object-contain"
                 controlsList="nodownload"
                 playsInline
                 onError={handleError}
                 onLoadedData={handleLoadedData}
-                style={{ width: '100%', height: '100%' }}
+                onSeeking={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  video.style.opacity = '1';
+                }}
+                onSeeked={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  video.style.opacity = '1';
+                }}
+                onPause={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  video.style.opacity = '1';
+                }}
+                style={{ 
+                  width: '100%', 
+                  height: '100%',
+                  opacity: 1,
+                  willChange: 'opacity'
+                }}
+                preload="auto"
               />
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">

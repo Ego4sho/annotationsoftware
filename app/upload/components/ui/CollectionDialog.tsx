@@ -85,7 +85,7 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
         type: f.type,
         fileName: f.file.name,
         originalName: f.file.name,
-        fileUrl: URL.createObjectURL(f.file),
+        storagePath: `users/${user?.uid}/collections/${formData.id}/video/${f.id}`,
         size: f.file.size,
         uploadedAt: Timestamp.now(),
         status: 'ready'
@@ -98,7 +98,7 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
         type: f.type,
         fileName: f.file.name,
         originalName: f.file.name,
-        fileUrl: URL.createObjectURL(f.file),
+        storagePath: `users/${user?.uid}/collections/${formData.id}/audio/${f.id}`,
         size: f.file.size,
         uploadedAt: Timestamp.now(),
         status: 'ready'
@@ -111,7 +111,7 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
         type: f.type,
         fileName: f.file.name,
         originalName: f.file.name,
-        fileUrl: URL.createObjectURL(f.file),
+        storagePath: `users/${user?.uid}/collections/${formData.id}/motion/${f.id}`,
         size: f.file.size,
         uploadedAt: Timestamp.now(),
         status: 'ready'

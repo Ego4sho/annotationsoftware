@@ -48,6 +48,16 @@ export function VideoPlayerContainer({ videoUrl }: VideoPlayerContainerProps) {
     };
   }, []);
 
+  useEffect(() => {
+    console.log('VideoPlayerContainer - Video URL changed:', videoUrl);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+    }
+  }, [videoUrl]);
+
   const handlePlayPause = () => {
     const video = videoRef.current;
     if (!video) return;

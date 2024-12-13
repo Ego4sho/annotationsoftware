@@ -2,21 +2,26 @@ import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { FileSelectionDialog } from "./FileSelectionDialog"
 import { VideoPlayerContainer } from "@/app/labeling/components/VideoPlayerContainer"
+import { FolderOpen } from "lucide-react"
 
 interface LabelingInterfaceProps {
   onFileSelect: (fileType: string, fileId: string) => void
+  selectedVideoUrl?: string
 }
 
 export function LabelingInterfaceUI({
-  onFileSelect
+  onFileSelect,
+  selectedVideoUrl
 }: LabelingInterfaceProps) {
   const [isFileSelectionOpen, setIsFileSelectionOpen] = useState(false)
 
   const handleFileSelect = (fileType: string, fileId: string) => {
-    console.log('File selected:', { fileType, fileId });
+    console.log('LabelingInterfaceUI - Handling file selection:', { fileType, fileId });
     onFileSelect(fileType, fileId);
     setIsFileSelectionOpen(false);
   };
+
+  console.log('LabelingInterfaceUI - Current video URL:', selectedVideoUrl);
 
   return (
     <div className="flex h-screen bg-black">
@@ -25,7 +30,19 @@ export function LabelingInterfaceUI({
         <div className="h-[45%] flex gap-4">
           {/* Video Player */}
           <div className="w-1/2">
-            <VideoPlayerContainer />
+            <div className="flex flex-col h-full">
+              <div className="flex justify-between items-center mb-2">
+                <Button
+                  onClick={() => setIsFileSelectionOpen(true)}
+                  variant="outline"
+                  className="text-white hover:bg-[#604abd]/20"
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Select Files
+                </Button>
+              </div>
+              <VideoPlayerContainer videoUrl={selectedVideoUrl} />
+            </div>
           </div>
         </div>
       </div>

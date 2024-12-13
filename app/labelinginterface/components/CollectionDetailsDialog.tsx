@@ -1,9 +1,10 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Collection } from "@/types/upload"
 import { format } from 'date-fns'
 import { ProgressBar } from "@/app/upload/components/ui/ProgressBar"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 
 interface CollectionDetailsDialogProps {
   collection: Collection
@@ -29,11 +30,35 @@ export function CollectionDetailsDialog({
   onOpenChange,
   onFileSelect
 }: CollectionDetailsDialogProps) {
+  const handleFileSelect = async (fileType: string, file: any) => {
+    console.log('CollectionDetailsDialog - File data:', {
+      fileType,
+      fileId: file.id,
+      fileName: file.fileName,
+      fileUrl: file.fileUrl,
+      storagePath: file.storagePath,
+      fullFile: file
+    });
+    
+    try {
+      // Call onFileSelect first
+      onFileSelect(fileType, file.id);
+      
+      // Then close the dialog
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error in handleFileSelect:', error);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl bg-[#1E1E1E] text-white border-[#604abd]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{collection.name}</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Select a file to begin labeling
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[80vh] pr-4">
@@ -63,40 +88,45 @@ export function CollectionDetailsDialog({
 
             {/* Files Sections */}
             <div className="space-y-6">
-              {FILE_TYPES.map(({ key, label }) => (
-                <div key={key} className="space-y-2">
-                  <h3 className="text-lg font-semibold text-white">{label}</h3>
-                  {collection.files?.[key]?.length ? (
-                    <div className="space-y-2">
-                      {collection.files[key].map((file) => (
-                        <div
-                          key={file.id}
-                          className="flex items-center justify-between p-2 bg-[#262626] rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <p className="text-sm text-white truncate">{file.fileName}</p>
-                            <p className="text-xs text-gray-400">
-                              Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
-                            </p>
-                          </div>
-                          <Button
-                            onClick={() => onFileSelect(key, file.id)}
-                            className="ml-4 bg-[#604abd] hover:bg-[#4c3a9e]"
+              {FILE_TYPES.map(({ key, label }) => {
+                const files = collection.files?.[key] || [];
+                console.log(`Files for ${key}:`, files);
+                
+                return (
+                  <div key={key} className="space-y-2">
+                    <h3 className="text-lg font-semibold text-white">{label}</h3>
+                    {files.length > 0 ? (
+                      <div className="space-y-2">
+                        {files.map((file) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center justify-between p-2 bg-[#262626] rounded-lg"
                           >
-                            Select
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400">No {label.toLowerCase()} files available</p>
-                  )}
-                </div>
-              ))}
+                            <div className="flex-1">
+                              <p className="text-sm text-white truncate">{file.fileName}</p>
+                              <p className="text-xs text-gray-400">
+                                Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => handleFileSelect(key, file)}
+                              className="ml-4 bg-[#604abd] hover:bg-[#4c3a9e]"
+                            >
+                              Select
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">No {label.toLowerCase()} files available</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
-  )
+  );
 } 

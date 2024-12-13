@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LabelingInterfaceProps } from '../types';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FileSelectionDialog } from "@/app/labelinginterface/components/FileSelectionDialog"
 import { 
   Play, Pause, ChevronLeft, ChevronRight, Maximize2, RotateCcw, RotateCw, 
@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { TimelineCard } from '@/app/rating/components/ui/TimelineCard';
 import { VideoPlayerContainer } from '@/app/labeling/components/VideoPlayerContainer';
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+import { collection, query, where, getDocs, getFirestore } from 'firebase/firestore';
+import { useAuth } from '@/lib/context/AuthContext';
 
 // Define allChannels constant
 const channelArray = Array.from({ length: 126 }, (_, i) => `Channel ${i + 1}`);
@@ -98,7 +101,87 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
   collections,
   onFileSelect,
 }) => {
-  const [isFileSelectionOpen, setIsFileSelectionOpen] = useState(false)
+  const [isFileSelectionOpen, setIsFileSelectionOpen] = useState(false);
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | undefined>();
+  const { user } = useAuth();
+
+  const handleFileSelect = async (fileType: string, fileId: string) => {
+    console.log('LabelingInterfaceUI (Test Label 2) - Handling file selection:', { fileType, fileId });
+    
+    if (onFileSelect) {
+      await onFileSelect(fileType, fileId);
+    }
+
+    // If it's a video file, get its URL
+    if (fileType === 'video' && user) {
+      try {
+        const db = getFirestore();
+        const collectionsRef = collection(db, 'collections');
+        const collectionsQuery = query(
+          collectionsRef,
+          where('userId', '==', user.uid),
+          where('deleted', '==', false)
+        );
+        const collectionsSnapshot = await getDocs(collectionsQuery);
+        console.log('Found collections:', collectionsSnapshot.docs.length);
+
+        // Search through all collections for the file
+        for (const doc of collectionsSnapshot.docs) {
+          const collectionData = doc.data();
+          console.log('Checking collection:', {
+            id: doc.id,
+            hasVideoFiles: !!collectionData.files?.video,
+            videoFilesCount: collectionData.files?.video?.length || 0
+          });
+
+          if (collectionData.files?.video) {
+            // Find the video file by ID
+            const videoFile = collectionData.files.video.find((file: any) => file.id === fileId);
+            if (videoFile) {
+              console.log('Found video file:', {
+                id: videoFile.id,
+                fileName: videoFile.fileName,
+                fileUrl: videoFile.fileUrl,
+                storagePath: videoFile.storagePath
+              });
+
+              // If we have a fileUrl (blob or direct), use it
+              if (videoFile.fileUrl) {
+                console.log('Using file URL:', videoFile.fileUrl);
+                setSelectedVideoUrl(videoFile.fileUrl);
+                console.log('Set selected video URL to:', videoFile.fileUrl);
+              }
+              // If no fileUrl but we have a storage path, get the download URL
+              else if (videoFile.storagePath) {
+                console.log('Getting URL from storage path:', videoFile.storagePath);
+                const storage = getStorage();
+                const fileRef = ref(storage, videoFile.storagePath);
+                try {
+                  const downloadUrl = await getDownloadURL(fileRef);
+                  console.log('Got download URL from storage:', downloadUrl);
+                  setSelectedVideoUrl(downloadUrl);
+                  console.log('Set selected video URL to:', downloadUrl);
+                } catch (error) {
+                  console.error('Error getting download URL:', error);
+                }
+              } else {
+                console.error('No valid file URL or storage path found');
+              }
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching collections:', error);
+      }
+    }
+    setIsFileSelectionOpen(false);
+  };
+
+  // Add effect to log URL changes
+  useEffect(() => {
+    console.log('LabelingInterfaceUI (Test Label 2) - Selected video URL changed:', selectedVideoUrl);
+  }, [selectedVideoUrl]);
 
   return (
     <div className="flex h-screen bg-black">
@@ -111,7 +194,10 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
               <div className="flex-1 flex flex-col">
                 {/* Video Container */}
                 <div className="relative flex-1">
-                  <VideoPlayerContainer />
+                  <VideoPlayerContainer 
+                    videoUrl={selectedVideoUrl} 
+                    key={selectedVideoUrl}
+                  />
                 </div>
               </div>
             </Card>
@@ -545,9 +631,9 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
         <FileSelectionDialog
           open={isFileSelectionOpen}
           onOpenChange={setIsFileSelectionOpen}
+          onFileSelect={handleFileSelect}
           projects={projects}
           collections={collections}
-          onFileSelect={onFileSelect}
         />
       </div>
       <div className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">Test Label 2</div>

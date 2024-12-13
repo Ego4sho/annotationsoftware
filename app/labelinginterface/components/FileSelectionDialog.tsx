@@ -85,11 +85,12 @@ export function FileSelectionDialog({
     fetchData();
   }, [open, user]);
 
-  const handleFileSelect = (type: string, id: string) => {
+  const handleFileSelect = async (type: string, id: string) => {
+    console.log('FileSelectionDialog - Handling file selection:', { type, id });
     if (onFileSelect) {
-      onFileSelect(type, id);
-      onOpenChange(false);
+      await onFileSelect(type, id);
     }
+    onOpenChange(false);
   };
 
   // Get unassigned collections

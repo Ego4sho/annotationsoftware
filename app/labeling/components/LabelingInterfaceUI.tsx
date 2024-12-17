@@ -15,7 +15,7 @@ import {
   ZoomIn, ZoomOut, Lock, Unlock, Plus, X, ArrowLeft, Search, Trash2, 
   ChevronDown, ChevronUp, Flag 
 } from 'lucide-react';
-import { TimelineCard } from '@/app/rating/components/ui/TimelineCard';
+import { TimelineCard } from '@/app/labeling/components/TimelineCard';
 import { VideoPlayerContainer } from '@/app/labeling/components/VideoPlayerContainer';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { collection, query, where, getDocs, getFirestore } from 'firebase/firestore';
@@ -52,6 +52,8 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
   isFlagSelected,
   onPlayPause,
   onSeek,
+  onTimeUpdate,
+  onDurationChange,
   onZoom,
   onAddQuickTag,
   onDeleteStep,
@@ -197,6 +199,13 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                   <VideoPlayerContainer 
                     videoUrl={selectedVideoUrl} 
                     key={selectedVideoUrl}
+                    onTimeUpdate={onTimeUpdate}
+                    onDurationChange={onDurationChange}
+                    onSeek={onSeek}
+                    currentTime={currentTime}
+                    duration={duration}
+                    isPlaying={isPlaying}
+                    onPlayPause={onPlayPause}
                   />
                 </div>
               </div>
@@ -564,16 +573,20 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                 </Button>
               </div>
 
-              {/* TimelineCard */}
+              {/* Timeline Card */}
               <div className="flex-1 min-h-0">
                 <TimelineCard
                   timelineRows={timelineRows}
                   isChannelViewExpanded={isChannelViewExpanded}
                   selectedChannels={selectedChannels}
-                  allChannels={channelArray}
+                  allChannels={allChannels}
                   onChannelViewToggle={onChannelViewToggle}
                   onChannelToggle={onChannelSelect}
                   onRowReorder={onRowReorder}
+                  currentTime={currentTime}
+                  duration={duration}
+                  onSeek={onSeek}
+                  videoUrl={selectedVideoUrl}
                 />
               </div>
             </div>

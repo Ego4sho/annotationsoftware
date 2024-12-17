@@ -50,7 +50,7 @@ export const useLabelingInterface = () => {
     selectedSession: {
       id: '1',
       name: 'Default Session',
-      date: '2024-01-01', // Use fixed date string
+      date: '2024-01-01',
       duration: '00:00:00',
       fileTypes: ['video', 'audio']
     },
@@ -58,7 +58,7 @@ export const useLabelingInterface = () => {
     duration: 0,
     isPlaying: false,
     sessions: mockSessions,
-    categories: mockCategories,  // Add categories
+    categories: mockCategories,
     selectedCategory: null,
     isAddingCategory: false,
     newCategoryName: '',
@@ -334,6 +334,38 @@ export const useLabelingInterface = () => {
     }));
   };
 
+  // Add time update handler
+  const handleTimeUpdate = (time: number) => {
+    setState(prev => ({
+      ...prev,
+      currentTime: time
+    }));
+  };
+
+  // Add duration change handler
+  const handleDurationChange = (duration: number) => {
+    setState(prev => ({
+      ...prev,
+      duration
+    }));
+  };
+
+  // Add seek handler
+  const handleSeek = (time: number) => {
+    setState(prev => ({
+      ...prev,
+      currentTime: time
+    }));
+  };
+
+  // Add play/pause handler
+  const handlePlayPause = (playing: boolean) => {
+    setState(prev => ({
+      ...prev,
+      isPlaying: playing
+    }));
+  };
+
   return {
     state,
     timelineRows: state.timelineRows,
@@ -366,5 +398,9 @@ export const useLabelingInterface = () => {
     onTimelineLockToggle: handleTimelineLockToggle,
     onFlagToggle: handleFlagToggle,
     handleStepTypeCardCollapse,  // Return the handler directly
+    onTimeUpdate: handleTimeUpdate,
+    onDurationChange: handleDurationChange,
+    onSeek: handleSeek,
+    onPlayPause: handlePlayPause,
   };
 }; 

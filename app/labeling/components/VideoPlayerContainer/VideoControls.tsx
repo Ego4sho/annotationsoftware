@@ -40,10 +40,6 @@ export function VideoControls({
   const [showFrames, setShowFrames] = useState(false);
   const FPS = 30; // Assuming 30 frames per second, adjust as needed
 
-  const handleProgressChange = (value: number[]) => {
-    onSeek(value[0]);
-  };
-
   const handleVolumeChange = (value: number[]) => {
     onVolumeChange(value[0]);
   };
@@ -59,47 +55,18 @@ export function VideoControls({
 
   const handleFrameStep = (forward: boolean) => {
     const frameTime = 1 / FPS;
-    onSeek(currentTime + (forward ? frameTime : -frameTime));
+    const newTime = currentTime + (forward ? frameTime : -frameTime);
+    onSeek(newTime);
   };
 
   const handlePlayPauseClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Add a small delay to ensure the video state is updated properly
-    setTimeout(() => {
-      onPlayPause();
-    }, 0);
+    onPlayPause();
   }, [onPlayPause]);
 
   return (
     <div className="p-2 space-y-1 bg-[#1E1E1E]">
-      {/* Timeline scrubber */}
-      <div className="relative h-8 bg-[#2A2A2A] rounded-sm group">
-        {/* Progress bar */}
-        <div 
-          className="absolute top-0 left-0 h-full bg-[#604abd] opacity-30"
-          style={{ width: `${(currentTime / (duration || 100)) * 100}%` }}
-        />
-        {/* Playhead line */}
-        <div 
-          className="absolute top-0 h-full w-0.5 bg-[#604abd] z-10"
-          style={{ left: `${(currentTime / (duration || 100)) * 100}%` }}
-        />
-        {/* Interactive slider */}
-        <Slider
-          value={[currentTime]}
-          min={0}
-          max={duration || 100}
-          step={1/FPS} // Frame-by-frame precision
-          onValueChange={handleProgressChange}
-          className="absolute inset-0 opacity-0"
-        />
-        {/* Time tooltip */}
-        <div className="absolute left-0 right-0 -top-6 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-xs text-white/80 py-1 px-2 rounded pointer-events-none">
-          {showFrames ? formatFrameCount(currentTime) : formatTime(currentTime)}
-        </div>
-      </div>
-
       {/* Controls row */}
       <div className="flex items-center h-8 gap-1">
         <div className="flex items-center gap-1">

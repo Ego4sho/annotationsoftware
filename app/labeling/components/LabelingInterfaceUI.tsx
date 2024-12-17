@@ -105,6 +105,7 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
 }) => {
   const [isFileSelectionOpen, setIsFileSelectionOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | undefined>();
+  const [selectedAudioUrl, setSelectedAudioUrl] = useState<string | undefined>();
   const { user } = useAuth();
 
   const handleFileSelect = async (fileType: string, fileId: string) => {
@@ -114,8 +115,7 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
       await onFileSelect(fileType, fileId);
     }
 
-    // If it's a video file, get its URL
-    if (fileType === 'video' && user) {
+    if (user) {
       try {
         const db = getFirestore();
         const collectionsRef = collection(db, 'collections');
@@ -132,49 +132,46 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
           const collectionData = doc.data();
           console.log('Checking collection:', {
             id: doc.id,
-            hasVideoFiles: !!collectionData.files?.video,
-            videoFilesCount: collectionData.files?.video?.length || 0
+            hasFiles: {
+              video: !!collectionData.files?.video,
+              audio: !!collectionData.files?.audio
+            }
           });
 
-          if (collectionData.files?.video) {
-            // Find the video file by ID
+          if (fileType === 'video' && collectionData.files?.video) {
             const videoFile = collectionData.files.video.find((file: any) => file.id === fileId);
             if (videoFile) {
-              console.log('Found video file:', {
-                id: videoFile.id,
-                fileName: videoFile.fileName,
-                fileUrl: videoFile.fileUrl,
-                storagePath: videoFile.storagePath
-              });
-
-              // If we have a fileUrl (blob or direct), use it
+              console.log('Found video file:', videoFile);
               if (videoFile.fileUrl) {
-                console.log('Using file URL:', videoFile.fileUrl);
                 setSelectedVideoUrl(videoFile.fileUrl);
-                console.log('Set selected video URL to:', videoFile.fileUrl);
-              }
-              // If no fileUrl but we have a storage path, get the download URL
-              else if (videoFile.storagePath) {
-                console.log('Getting URL from storage path:', videoFile.storagePath);
+              } else if (videoFile.storagePath) {
                 const storage = getStorage();
                 const fileRef = ref(storage, videoFile.storagePath);
-                try {
-                  const downloadUrl = await getDownloadURL(fileRef);
-                  console.log('Got download URL from storage:', downloadUrl);
-                  setSelectedVideoUrl(downloadUrl);
-                  console.log('Set selected video URL to:', downloadUrl);
-                } catch (error) {
-                  console.error('Error getting download URL:', error);
-                }
-              } else {
-                console.error('No valid file URL or storage path found');
+                const downloadUrl = await getDownloadURL(fileRef);
+                setSelectedVideoUrl(downloadUrl);
+              }
+              break;
+            }
+          }
+
+          if (fileType === 'audio' && collectionData.files?.audio) {
+            const audioFile = collectionData.files.audio.find((file: any) => file.id === fileId);
+            if (audioFile) {
+              console.log('Found audio file:', audioFile);
+              if (audioFile.fileUrl) {
+                setSelectedAudioUrl(audioFile.fileUrl);
+              } else if (audioFile.storagePath) {
+                const storage = getStorage();
+                const fileRef = ref(storage, audioFile.storagePath);
+                const downloadUrl = await getDownloadURL(fileRef);
+                setSelectedAudioUrl(downloadUrl);
               }
               break;
             }
           }
         }
       } catch (error) {
-        console.error('Error fetching collections:', error);
+        console.error('Error fetching files:', error);
       }
     }
     setIsFileSelectionOpen(false);
@@ -182,8 +179,11 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
 
   // Add effect to log URL changes
   useEffect(() => {
-    console.log('LabelingInterfaceUI (Test Label 2) - Selected video URL changed:', selectedVideoUrl);
-  }, [selectedVideoUrl]);
+    console.log('LabelingInterfaceUI (Test Label 2) - URLs changed:', {
+      video: selectedVideoUrl,
+      audio: selectedAudioUrl
+    });
+  }, [selectedVideoUrl, selectedAudioUrl]);
 
   return (
     <div className="flex h-screen bg-black">
@@ -587,6 +587,7 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                   duration={duration}
                   onSeek={onSeek}
                   videoUrl={selectedVideoUrl}
+                  audioUrl={selectedAudioUrl}
                 />
               </div>
             </div>

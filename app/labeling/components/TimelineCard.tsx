@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { DragDropContext, Draggable } from 'react-beautiful-dnd';
 import { StrictModeDroppable } from '@/components/ui/strict-mode-droppable';
+import { AudioWaveform } from './AudioWaveform';
 
 interface TimelineRow {
   id: string;
@@ -22,6 +23,9 @@ interface TimelineCardProps {
   onRowReorder: (fromIndex: number, toIndex: number) => void;
   currentTime: number;
   duration: number;
+  onSeek: (time: number) => void;
+  videoUrl?: string;
+  audioUrl?: string;
 }
 
 export const TimelineCard: React.FC<TimelineCardProps> = ({
@@ -34,10 +38,21 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
   onRowReorder,
   currentTime,
   duration,
+  onSeek,
+  videoUrl,
+  audioUrl
 }) => {
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
     onRowReorder(result.source.index, result.destination.index);
+  };
+
+  const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newTime = percentage * duration;
+    onSeek(newTime);
   };
 
   // Format timestamp as MM:SS
@@ -63,17 +78,15 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
             <div className="w-8 h-full flex items-center justify-center bg-[#1A1A1A] text-white">
               A
             </div>
-            <div className="flex-1 h-full bg-[#2A2A2A] relative">
-              <div className="absolute inset-0 flex items-center justify-center text-white/50">
-                Audio Waveform (Coming Soon)
-              </div>
-              {/* Current time indicator */}
-              <div 
-                className="absolute top-0 w-0.5 h-full bg-white"
-                style={{ 
-                  left: `${(currentTime / duration) * 100}%`,
-                  transform: 'translateX(-50%)',
-                }}
+            <div 
+              className="flex-1 h-full bg-[#2A2A2A] relative cursor-pointer"
+              onClick={handleWaveformClick}
+            >
+              <AudioWaveform
+                audioUrl={audioUrl}
+                currentTime={currentTime}
+                duration={duration}
+                height={64}
               />
             </div>
           </div>

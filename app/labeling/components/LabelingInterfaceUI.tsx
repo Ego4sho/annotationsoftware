@@ -484,8 +484,29 @@ export const LabelingInterfaceUI: React.FC<LabelingInterfaceProps> = ({
                   <Flag className="h-5 w-5" />
                 </Button>
 
+                {/* Play/Pause Button */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`
+                    text-white w-10 h-10 transition-all duration-200
+                    ${isPlaying 
+                      ? 'bg-[#604abd] hover:bg-[#7059c4]' 
+                      : 'hover:bg-[#604abd]/20'
+                    }
+                  `}
+                  onClick={() => {
+                    console.log('LabelingInterfaceUI: Play/Pause button clicked, current state:', { isPlaying });
+                    if (onPlayPause) {
+                      onPlayPause();
+                    }
+                  }}
+                >
+                  {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                </Button>
+
                 {/* Rest of the buttons */}
-                {Array.from({ length: 8 }).map((_, index) => (
+                {Array.from({ length: 7 }).map((_, index) => (
                   <Button
                     key={index}
                     size="sm"

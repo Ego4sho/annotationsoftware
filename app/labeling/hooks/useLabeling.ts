@@ -65,17 +65,29 @@ export const useLabeling = () => {
 
   // All handlers
   const handlePlayPause = () => {
-    if (videoRef.current) {
-      if (state.isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
-    }
+    console.log('useLabeling: handlePlayPause called, current state:', state.isPlaying);
+    setState(prev => {
+      const newIsPlaying = !prev.isPlaying;
+      console.log('useLabeling: Setting isPlaying to:', newIsPlaying);
+      return { ...prev, isPlaying: newIsPlaying };
+    });
   };
 
-  const handleSeek = () => {};
+  const handleTimeUpdate = (time: number) => {
+    console.log('useLabeling: handleTimeUpdate called with time:', time);
+    setState(prev => ({ ...prev, currentTime: time }));
+  };
+
+  const handleDurationChange = (newDuration: number) => {
+    console.log('useLabeling: handleDurationChange called with duration:', newDuration);
+    setState(prev => ({ ...prev, duration: newDuration }));
+  };
+
+  const handleSeek = (time: number) => {
+    console.log('useLabeling: handleSeek called with time:', time);
+    setState(prev => ({ ...prev, currentTime: time }));
+  };
+
   const handleZoom = (direction: 'in' | 'out') => {
     setState(prev => ({
       ...prev,

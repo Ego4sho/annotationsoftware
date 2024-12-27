@@ -1,36 +1,116 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Collections
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidCollection() {
+      return request.resource.data.keys().hasAll(['userId', 'deleted', 'name', 'createdAt', 'updatedAt', 'status', 'progress']) &&
+             request.resource.data.deleted is bool &&
+             request.resource.data.name is string &&
+             request.resource.data.createdAt is timestamp &&
+             request.resource.data.updatedAt is timestamp &&
+             request.resource.data.status in ['incomplete', 'complete'] &&
+             request.resource.data.progress.keys().hasAll(['labeling', 'rating', 'validated']) &&
+             request.resource.data.progress.labeling in ['not-started', 'in-progress', 'completed'] &&
+             request.resource.data.progress.rating in ['not-started', 'in-progress', 'completed'] &&
+             request.resource.data.progress.validated in ['not-started', 'in-progress', 'completed'];
+    }
+
+    function isValidProject() {
+      return request.resource.data.keys().hasAll(['userId', 'deleted', 'name', 'createdAt', 'updatedAt']) &&
+             request.resource.data.deleted is bool &&
+             request.resource.data.name is string &&
+             request.resource.data.createdAt is timestamp &&
+             request.resource.data.updatedAt is timestamp;
+    }
+
+    // Collection rules
     match /collections/{collectionId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+                   request.resource.data.userId == request.auth.uid &&
+                   isValidCollection();
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        request.resource.data.userId == request.auth.uid
+      ) && isValidCollection();
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Nested files collection
       match /files/{fileId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && get(/databases/$(database)/documents/collections/$(collectionId)).data.userId == request.auth.uid;
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && 
+                    get(/databases/$(database)/documents/collections/$(collectionId)).data.userId == request.auth.uid;
+        allow delete: if isSignedIn() && 
+                     get(/databases/$(database)/documents/collections/$(collectionId)).data.userId == request.auth.uid;
       }
     }
 
-    // Projects
+    // Project rules
     match /projects/{projectId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+                   request.resource.data.userId == request.auth.uid &&
+                   isValidProject();
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        request.resource.data.userId == request.auth.uid
+      ) && isValidProject();
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Nested files collection
       match /files/{fileId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.userId == request.auth.uid;
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && 
+                    get(/databases/$(database)/documents/projects/$(projectId)).data.userId == request.auth.uid;
+        allow delete: if isSignedIn() && 
+                     get(/databases/$(database)/documents/projects/$(projectId)).data.userId == request.auth.uid;
       }
     }
 
-    // Users
+    // User profiles
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+
+    // User settings
+    match /settings/{userId} {
+      allow read: if isSignedIn() && isOwner(userId);
+      allow write: if isSignedIn() && isOwner(userId);
+    }
+
+    // Annotations
+    match /annotations/{annotationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Ratings
+    match /ratings/{ratingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }
 
 // Required indexes
 // collections: userId, deleted, updatedAt DESC
-// projects: userId, deleted, createdAt DESC 
+// collections: userId, deleted, createdAt DESC
+// collections: userId, deleted, name ASC
+// projects: userId, deleted, updatedAt DESC
+// projects: userId, deleted, createdAt DESC
+// projects: userId, deleted, name ASC
+// annotations: userId, collectionId, createdAt DESC
+// ratings: userId, collectionId, createdAt DESC

@@ -24,6 +24,12 @@ const FILE_TYPES = [
   { key: 'aux5', label: 'Auxiliary Sensor 5' }
 ] as const;
 
+const PROGRESS_CATEGORIES = [
+  { id: 'labeling-progress', type: 'labeling' },
+  { id: 'rating-progress', type: 'rating' },
+  { id: 'validated-progress', type: 'validated' }
+] as const;
+
 export function CollectionDetailsDialog({
   collection,
   open,
@@ -52,8 +58,8 @@ export function CollectionDetailsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl bg-[#1E1E1E] text-white border-[#604abd]">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
+      <DialogContent className="max-w-3xl bg-[#1E1E1E] text-white border-[#604abd]" data-portal-root="collection-details">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{collection.name}</DialogTitle>
           <DialogDescription className="text-gray-400">
@@ -73,15 +79,15 @@ export function CollectionDetailsDialog({
 
             {/* Progress Bars */}
             <div className="space-y-4">
-              {(['labeling', 'rating', 'validated'] as const).map(category => (
-                <div key={category} className="space-y-1">
+              {PROGRESS_CATEGORIES.map(({ id, type }) => (
+                <div key={`${collection.id}-${id}`} className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-400 capitalize">{category}</span>
+                    <span className="text-sm text-gray-400 capitalize">{type}</span>
                     <span className="text-sm text-gray-400 capitalize">
-                      {collection.progress?.[category] || 'not-started'}
+                      {collection.progress?.[type] || 'not-started'}
                     </span>
                   </div>
-                  <ProgressBar status={collection.progress?.[category] || 'not-started'} />
+                  <ProgressBar status={collection.progress?.[type] || 'not-started'} />
                 </div>
               ))}
             </div>
@@ -90,36 +96,32 @@ export function CollectionDetailsDialog({
             <div className="space-y-6">
               {FILE_TYPES.map(({ key, label }) => {
                 const files = collection.files?.[key] || [];
-                console.log(`Files for ${key}:`, files);
+                if (files.length === 0) return null;
                 
                 return (
-                  <div key={key} className="space-y-2">
+                  <div key={`${collection.id}-${key}-files`} className="space-y-2">
                     <h3 className="text-lg font-semibold text-white">{label}</h3>
-                    {files.length > 0 ? (
-                      <div className="space-y-2">
-                        {files.map((file) => (
-                          <div
-                            key={file.id}
-                            className="flex items-center justify-between p-2 bg-[#262626] rounded-lg"
-                          >
-                            <div className="flex-1">
-                              <p className="text-sm text-white truncate">{file.fileName}</p>
-                              <p className="text-xs text-gray-400">
-                                Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
-                              </p>
-                            </div>
-                            <Button
-                              onClick={() => handleFileSelect(key, file)}
-                              className="ml-4 bg-[#604abd] hover:bg-[#4c3a9e]"
-                            >
-                              Select
-                            </Button>
+                    <div className="space-y-2">
+                      {files.map((file) => (
+                        <div
+                          key={`${collection.id}-${key}-${file.id}`}
+                          className="flex items-center justify-between p-2 bg-[#262626] rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <p className="text-sm text-white truncate">{file.fileName}</p>
+                            <p className="text-xs text-gray-400">
+                              Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
+                            </p>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-400">No {label.toLowerCase()} files available</p>
-                    )}
+                          <Button
+                            onClick={() => handleFileSelect(key, file)}
+                            className="ml-4 bg-[#604abd] hover:bg-[#4c3a9e]"
+                          >
+                            Select
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })}

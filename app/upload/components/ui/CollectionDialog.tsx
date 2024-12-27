@@ -14,6 +14,9 @@ import { useAuth } from '@/lib/context/AuthContext'
 import { FileUploadArea } from './FileUploadArea'
 import { format } from 'date-fns'
 import { useUploadState } from '../../hooks/useUploadState'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { storage } from '@/lib/firebase'
+import { useToast } from "@/components/ui/use-toast"
 
 interface CollectionDialogProps {
   open: boolean
@@ -21,6 +24,9 @@ interface CollectionDialogProps {
   collection: Collection | null
   onSave: (collection: Collection) => void
 }
+
+const MAX_RETRY_ATTEMPTS = 3;
+const CHUNK_SIZE = 256 * 1024; // 256KB chunks for better upload reliability
 
 export const CollectionDialog: React.FC<CollectionDialogProps> = ({
   open,
@@ -30,10 +36,12 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
 }) => {
   const [formData, setFormData] = useState<Collection | null>(null);
   const { user } = useAuth();
-  const { getFiles, clearFiles } = useUploadState();
+  const { getFiles, clearFiles, updateFileProgress } = useUploadState();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (collection) {
+      // Editing existing collection
       setFormData({
         ...collection,
         files: collection.files || {
@@ -48,8 +56,10 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
         }
       });
     } else {
+      // Creating new collection - generate ID immediately
+      const newCollectionId = uuidv4();
       setFormData({
-        id: '',
+        id: newCollectionId,
         name: '',
         description: '',
         userId: user?.uid || '',
@@ -73,80 +83,251 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
         }
       } as Collection);
     }
-  }, [collection, user]);
+  }, [collection, user, open]); // Added open to dependencies to reset on dialog open
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (formData) {
-      // Get files from Zustand store
-      const uploadedVideoFiles = getFiles(formData.id).filter(f => f.type === 'video').map(f => ({
-        id: f.id,
-        projectId: formData.id,
-        userId: user?.uid || '',
-        type: f.type,
-        fileName: f.file.name,
-        originalName: f.file.name,
-        fileUrl: URL.createObjectURL(f.file),
-        size: f.file.size,
-        uploadedAt: Timestamp.now(),
-        status: 'ready'
-      } as ProjectFile));
+      try {
+        console.log('Starting collection save and file uploads for collection:', formData.id);
+        console.log('Current user:', user?.uid);
 
-      const uploadedAudioFiles = getFiles(formData.id).filter(f => f.type === 'audio').map(f => ({
-        id: f.id,
-        projectId: formData.id,
-        userId: user?.uid || '',
-        type: f.type,
-        fileName: f.file.name,
-        originalName: f.file.name,
-        fileUrl: URL.createObjectURL(f.file),
-        size: f.file.size,
-        uploadedAt: Timestamp.now(),
-        status: 'ready'
-      } as ProjectFile));
+        // Get files to upload first
+        const filesToUpload = getFiles(formData.id);
+        console.log('Files to upload:', filesToUpload.map(f => ({
+          name: f.file.name,
+          type: f.type,
+          size: f.file.size,
+          id: f.id
+        })));
 
-      const uploadedMotionFiles = getFiles(formData.id).filter(f => f.type === 'motion').map(f => ({
-        id: f.id,
-        projectId: formData.id,
-        userId: user?.uid || '',
-        type: f.type,
-        fileName: f.file.name,
-        originalName: f.file.name,
-        fileUrl: URL.createObjectURL(f.file),
-        size: f.file.size,
-        uploadedAt: Timestamp.now(),
-        status: 'ready'
-      } as ProjectFile));
+        // Create initial collection with empty files array
+        const initialCollection = {
+          ...formData,
+          updatedAt: Timestamp.now(),
+          files: {
+            video: [],
+            audio: [],
+            motion: [],
+            aux1: [],
+            aux2: [],
+            aux3: [],
+            aux4: [],
+            aux5: []
+          }
+        };
+        
+        console.log('Creating initial collection:', initialCollection);
+        await onSave(initialCollection);
+        
+        // Upload files to Firebase Storage and get permanent URLs
+        const uploadFile = async (file: UploadFile): Promise<ProjectFile> => {
+          const fileId = file.id;
+          const fileName = file.file.name.replace(/[^a-zA-Z0-9.-]/g, '_'); // Sanitize filename
+          const path = `files/${user?.uid}/${formData.id}/${fileId}-${fileName}`;
+          
+          console.log('Starting upload for file:', {
+            fileName: file.file.name,
+            path,
+            fileSize: file.file.size,
+            fileType: file.file.type,
+            collectionId: formData.id,
+            fileId: fileId
+          });
+          
+          updateFileProgress(formData.id, fileId, 0, 'uploading');
+          
+          let retryAttempt = 0;
+          
+          const attemptUpload = async (): Promise<ProjectFile> => {
+            try {
+              const storageRef = ref(storage, path);
+              const metadata = {
+                contentType: file.file.type,
+                customMetadata: {
+                  collectionId: formData.id,
+                  fileId: fileId,
+                  originalName: file.file.name
+                }
+              };
 
-      // Get existing files that weren't modified
-      const existingVideoFiles = formData.files.video || [];
-      const existingAudioFiles = formData.files.audio || [];
-      const existingMotionFiles = formData.files.motion || [];
-      const existingAux1Files = formData.files.aux1 || [];
-      const existingAux2Files = formData.files.aux2 || [];
-      const existingAux3Files = formData.files.aux3 || [];
-      const existingAux4Files = formData.files.aux4 || [];
-      const existingAux5Files = formData.files.aux5 || [];
+              const uploadTask = uploadBytesResumable(storageRef, file.file, metadata);
+              
+              return new Promise((resolve, reject) => {
+                let lastProgress = 0;
+                let progressTimeout: NodeJS.Timeout | null = null;
+                let lastProgressUpdate = Date.now();
 
-      // Update formData with both uploaded and existing files
-      const updatedCollection = {
-        ...formData,
-        updatedAt: Timestamp.now(),
-        files: {
-          video: [...existingVideoFiles, ...uploadedVideoFiles],
-          audio: [...existingAudioFiles, ...uploadedAudioFiles],
-          motion: [...existingMotionFiles, ...uploadedMotionFiles],
-          aux1: existingAux1Files,
-          aux2: existingAux2Files,
-          aux3: existingAux3Files,
-          aux4: existingAux4Files,
-          aux5: existingAux5Files
+                const resetProgressTimeout = () => {
+                  if (progressTimeout) {
+                    clearTimeout(progressTimeout);
+                    progressTimeout = null;
+                  }
+                  progressTimeout = setTimeout(() => {
+                    const timeSinceLastUpdate = Date.now() - lastProgressUpdate;
+                    if (lastProgress < 100 && timeSinceLastUpdate > 30000) { // Increased timeout to 30 seconds
+                      console.log('Upload progress stalled, retrying...');
+                      uploadTask.cancel();
+                      reject(new Error('Upload progress stalled'));
+                    }
+                  }, 30000); // 30 second timeout
+                };
+
+                uploadTask.on(
+                  'state_changed',
+                  (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    lastProgress = progress;
+                    lastProgressUpdate = Date.now();
+                    
+                    console.log(`Upload progress for ${file.file.name}:`, {
+                      progress,
+                      bytesTransferred: snapshot.bytesTransferred,
+                      totalBytes: snapshot.totalBytes,
+                      state: snapshot.state
+                    });
+                    
+                    updateFileProgress(formData.id, fileId, progress, 'uploading');
+                    resetProgressTimeout();
+                  },
+                  (error) => {
+                    if (progressTimeout) {
+                      clearTimeout(progressTimeout);
+                      progressTimeout = null;
+                    }
+                    console.error('Upload error:', {
+                      error,
+                      code: error.code,
+                      message: error.message,
+                      serverResponse: error.serverResponse
+                    });
+                    reject(error);
+                  },
+                  async () => {
+                    if (progressTimeout) {
+                      clearTimeout(progressTimeout);
+                      progressTimeout = null;
+                    }
+                    try {
+                      console.log(`Upload completed for ${file.file.name}, getting download URL...`);
+                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                      console.log(`Got download URL for ${file.file.name}:`, downloadURL);
+                      updateFileProgress(formData.id, fileId, 100, 'complete');
+                      
+                      resolve({
+                        id: fileId,
+                        projectId: formData.id,
+                        userId: user?.uid || '',
+                        type: file.type,
+                        fileName: file.file.name,
+                        originalName: file.file.name,
+                        fileUrl: downloadURL,
+                        storagePath: path,
+                        size: file.file.size,
+                        uploadedAt: Timestamp.now(),
+                        status: 'ready'
+                      } as ProjectFile);
+                    } catch (error) {
+                      console.error('Error getting download URL:', error);
+                      reject(error);
+                    }
+                  }
+                );
+
+                // Clean up on unmount
+                return () => {
+                  if (progressTimeout) {
+                    clearTimeout(progressTimeout);
+                    progressTimeout = null;
+                  }
+                };
+              });
+            } catch (error) {
+              console.error('Upload attempt failed:', error);
+              throw error;
+            }
+          };
+
+          // Implement retry logic with exponential backoff
+          while (retryAttempt < MAX_RETRY_ATTEMPTS) {
+            try {
+              return await attemptUpload();
+            } catch (error) {
+              retryAttempt++;
+              if (retryAttempt < MAX_RETRY_ATTEMPTS) {
+                const delay = Math.pow(2, retryAttempt) * 1000; // Exponential backoff
+                console.log(`Retry attempt ${retryAttempt} for ${file.file.name}, waiting ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+              } else {
+                updateFileProgress(formData.id, fileId, 0, 'error');
+                toast({
+                  title: "Upload Error",
+                  description: `Failed to upload ${file.file.name} after ${MAX_RETRY_ATTEMPTS} attempts`,
+                  variant: "destructive"
+                });
+                throw error;
+              }
+            }
+          }
+
+          throw new Error(`Failed to upload ${file.file.name} after ${MAX_RETRY_ATTEMPTS} attempts`);
+        };
+
+        // Upload files sequentially
+        const uploadedFiles = [];
+        for (const file of filesToUpload) {
+          try {
+            const uploadedFile = await uploadFile(file);
+            uploadedFiles.push(uploadedFile);
+          } catch (error) {
+            console.error(`Failed to upload ${file.file.name}:`, error);
+            // Continue with other files even if one fails
+          }
         }
-      };
+        console.log('All files uploaded:', uploadedFiles);
 
-      console.log('Saving collection with files:', updatedCollection);
-      onSave(updatedCollection);
-      clearFiles(formData.id);  // Clear the Zustand store for this collection
-      onOpenChange(false);
+        // Group uploaded files by type
+        const uploadedVideoFiles = uploadedFiles.filter(f => f.type === 'video');
+        const uploadedAudioFiles = uploadedFiles.filter(f => f.type === 'audio');
+        const uploadedMotionFiles = uploadedFiles.filter(f => f.type === 'motion');
+
+        // Update collection with uploaded files
+        const updatedCollection = {
+          ...formData,
+          updatedAt: Timestamp.now(),
+          files: {
+            video: uploadedVideoFiles,
+            audio: uploadedAudioFiles,
+            motion: uploadedMotionFiles,
+            aux1: [],
+            aux2: [],
+            aux3: [],
+            aux4: [],
+            aux5: []
+          }
+        };
+
+        console.log('Saving updated collection with files:', updatedCollection);
+        await onSave(updatedCollection);
+        clearFiles(formData.id);  // Clear the Zustand store for this collection
+        onOpenChange(false);
+
+        toast({
+          title: "Success",
+          description: `Successfully uploaded ${uploadedFiles.length} of ${filesToUpload.length} files`,
+        });
+
+        // Reset form data after successful save
+        if (!collection) {
+          setFormData(null);
+        }
+      } catch (error) {
+        console.error('Error submitting collection:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save collection and upload files. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -168,7 +349,7 @@ export const CollectionDialog: React.FC<CollectionDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className="sm:max-w-[600px] h-[80vh] bg-[#1A1A1A] border-[#604abd] p-0 flex flex-col"
-        aria-describedby="collection-dialog-description"
+        aria-describedby={formData ? "collection-dialog-description" : undefined}
       >
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-2xl font-bold text-white">

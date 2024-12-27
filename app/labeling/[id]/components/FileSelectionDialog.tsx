@@ -34,8 +34,8 @@ export function FileSelectionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1E1E1E] text-white max-w-7xl h-[80vh] p-0">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
+      <DialogContent className="bg-[#1E1E1E] text-white max-w-7xl h-[80vh] p-0" data-portal-root="file-selection">
         <ScrollArea className="h-full">
           <div className="px-6 py-4">
             <DialogHeader>
@@ -50,7 +50,7 @@ export function FileSelectionDialog({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {projects.map(project => (
                       <SelectableProjectContainer
-                        key={project.id}
+                        key={`project-${project.id}`}
                         project={project}
                         collections={collections}
                         onFileSelect={handleFileSelect}
@@ -67,7 +67,7 @@ export function FileSelectionDialog({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {collections.map(collection => (
                       <SelectableCollectionCard
-                        key={collection.id}
+                        key={`collection-${collection.id}`}
                         collection={collection}
                         onFileSelect={handleFileSelect}
                       />

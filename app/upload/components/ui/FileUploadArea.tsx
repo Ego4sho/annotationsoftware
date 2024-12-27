@@ -64,6 +64,16 @@ export const FileUploadArea = ({
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (!collectionId) {
+      console.error('No collection ID provided');
+      toast({
+        title: "Error",
+        description: "Collection ID is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Check if we've already reached the max files limit including saved files
     const savedFiles = collection?.files?.[fileType] || [];
     const uploadingFiles = getFiles(collectionId).filter(f => f.type === fileType && f.status !== 'complete');
@@ -84,6 +94,7 @@ export const FileUploadArea = ({
 
     filesToUpload.forEach(file => {
       const fileId = uuidv4();
+      console.log(`Adding file ${file.name} with ID ${fileId} to collection ${collectionId}`);
       addFile(collectionId, {
         id: fileId,
         file,
@@ -91,25 +102,13 @@ export const FileUploadArea = ({
         progress: 0,
         status: 'pending'
       });
-      
-      // Simulate upload progress
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        if (progress <= 100) {
-          updateFileProgress(collectionId, fileId, progress);
-        }
-        if (progress === 100) {
-          clearInterval(interval);
-          updateFileProgress(collectionId, fileId, 100, 'complete');
-          toast({
-            title: "Success",
-            description: `${file.name} uploaded successfully`,
-          });
-        }
-      }, 500);
     });
-  }, [addFile, collectionId, fileType, updateFileProgress, toast, maxFiles, collection]);
+
+    toast({
+      title: "Files Added",
+      description: `${filesToUpload.length} files ready for upload`,
+    });
+  }, [addFile, collectionId, fileType, maxFiles, collection, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -120,14 +119,17 @@ export const FileUploadArea = ({
   });
 
   const handleRemoveFile = (fileId: string) => {
+    if (!collectionId) {
+      console.error('No collection ID provided');
+      return;
+    }
+    console.log(`Removing file ${fileId} from collection ${collectionId}`);
     removeFile(collectionId, fileId);
   };
 
   // Get files that are currently being uploaded or completed but not saved
   const uploadingFiles = getFiles(collectionId)
-    .filter((f: UploadFile) => 
-      f.type === fileType
-    );
+    .filter((f: UploadFile) => f.type === fileType);
 
   // Get saved files from the collection
   const savedFiles = collection?.files?.[fileType] || [];
@@ -167,7 +169,7 @@ export const FileUploadArea = ({
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm text-gray-300 truncate flex-1 mr-2">{file.file.name}</span>
                 <span className="text-xs text-gray-400">
-                  {file.status === 'complete' ? '100%' : file.status === 'uploading' ? `${file.progress}%` : ''}
+                  {file.status === 'complete' ? '100%' : file.status === 'uploading' ? `${Math.round(file.progress)}%` : ''}
                 </span>
                 <button
                   onClick={() => handleRemoveFile(file.id)}

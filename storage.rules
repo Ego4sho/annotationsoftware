@@ -2,22 +2,40 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    match /users/{userId}/collections/{collectionId}/{fileType}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-        && request.auth.uid == userId
-        && validateFileType(fileType, request.resource.contentType)
-        && request.resource.size < 500 * 1024 * 1024; // 500MB limit
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isValidFileSize() {
+      return request.resource.size <= 500 * 1024 * 1024; // 500MB limit
+    }
+
+    // Files stored in user-specific directories
+    match /files/{userId}/{collectionId}/{fileName} {
+      allow read, get: if isSignedIn();
+      allow write: if isSignedIn() && isValidFileSize();
+      allow delete: if isSignedIn() && isOwner(userId);
+      
+      // Allow metadata access
+      allow get: if isSignedIn();
+    }
+
+    // Temporary upload directory
+    match /temp/{userId}/{fileName} {
+      allow read, write: if isSignedIn();
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
+
+    // Allow listing files in directories
+    match /{allPaths=**} {
+      allow list: if isSignedIn();
+      // Allow metadata access for all files
+      allow get: if isSignedIn();
     }
   }
-}
-
-function validateFileType(fileType, contentType) {
-  let validTypes = {
-    'video': ['video/mp4', 'video/quicktime'],
-    'audio': ['audio/mpeg', 'audio/wav'],
-    'motion': ['application/octet-stream', 'text/plain']
-  };
-  return fileType in validTypes 
-    && contentType in validTypes[fileType];
 } 

@@ -1,6 +1,6 @@
 import { db } from '@/lib/firebase';
 import { Collection } from '@/types/upload';
-import { addDoc, updateDoc, doc, getDocs, query, where, Timestamp, collection as firestoreCollection, getDoc } from 'firebase/firestore';
+import { addDoc, updateDoc, doc, getDocs, query, where, Timestamp, collection as firestoreCollection, getDoc, setDoc } from 'firebase/firestore';
 
 const COLLECTIONS_COLLECTION = 'collections';
 
@@ -43,11 +43,20 @@ export const collectionService = {
       });
 
       console.log('Creating collection with data:', collectionData);
-      const collectionRef = await addDoc(firestoreCollection(db, COLLECTIONS_COLLECTION), collectionData);
-      console.log('Collection created with ID:', collectionRef.id);
+      
+      // If an ID was provided, use it
+      let docRef;
+      if (id) {
+        docRef = doc(db, COLLECTIONS_COLLECTION, id);
+        await setDoc(docRef, collectionData);
+      } else {
+        docRef = await addDoc(firestoreCollection(db, COLLECTIONS_COLLECTION), collectionData);
+      }
+      
+      console.log('Collection created with ID:', docRef.id);
       
       // Return the collection with the Firebase-generated ID
-      const newCollection = { ...collectionData, id: collectionRef.id } as Collection;
+      const newCollection = { ...collectionData, id: docRef.id } as Collection;
       console.log('Returning new collection:', newCollection);
       return newCollection;
     } catch (error) {
@@ -63,18 +72,20 @@ export const collectionService = {
       }
       const docRef = doc(db, COLLECTIONS_COLLECTION, collection.id);
       
-      // First check if the document exists and is not deleted
+      // First check if the document exists
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
-        throw new Error('Collection not found');
+        // If document doesn't exist, create it
+        return await this.createCollection(collection);
       }
       if (docSnap.data()?.deleted) {
         throw new Error('Cannot update a deleted collection');
       }
 
       // Update the collection
+      const { id, ...collectionWithoutId } = collection;
       await updateDoc(docRef, {
-        ...collection,
+        ...collectionWithoutId,
         updatedAt: Timestamp.now()
       });
       return collection;

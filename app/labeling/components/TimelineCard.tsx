@@ -49,15 +49,26 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
   const audioWaveformRef = useRef<AudioWaveformRef>(null);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(externalCurrentTime);
+  const [isAudioReady, setIsAudioReady] = useState(false);
 
   // Update internal time when external time changes
   useEffect(() => {
     setCurrentTime(externalCurrentTime);
   }, [externalCurrentTime]);
 
+  // Reset audio state when URL changes
+  useEffect(() => {
+    setIsAudioReady(false);
+    setIsAudioPlaying(false);
+  }, [audioUrl]);
+
   // Handle audio play/pause separately from video
   const handleAudioPlayPause = async () => {
     console.log('TimelineCard: handleAudioPlayPause called');
+    if (!isAudioReady) {
+      console.log('TimelineCard: Audio not ready');
+      return;
+    }
     if (audioWaveformRef.current) {
       try {
         if (isAudioPlaying) {
@@ -92,6 +103,11 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
   const handlePause = () => {
     console.log('TimelineCard: handlePause called');
     setIsAudioPlaying(false);
+  };
+
+  const handleAudioReady = () => {
+    console.log('TimelineCard: Audio ready');
+    setIsAudioReady(true);
   };
 
   // Update audio state when component unmounts
@@ -134,16 +150,19 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
             </div>
             <div className="flex-1 h-full bg-[#2A2A2A] relative select-none" style={{ minHeight: '64px' }}>
               <div className="absolute inset-0" style={{ minHeight: '64px' }}>
-                <AudioWaveform
-                  ref={audioWaveformRef}
-                  audioUrl={audioUrl}
-                  currentTime={currentTime}
-                  duration={duration || 0}
-                  height={64}
-                  onSeek={handleSeek}
-                  onPlay={handlePlay}
-                  onPause={handlePause}
-                />
+                {audioUrl && (
+                  <AudioWaveform
+                    ref={audioWaveformRef}
+                    audioUrl={audioUrl}
+                    currentTime={currentTime}
+                    duration={duration}
+                    height={64}
+                    onSeek={handleSeek}
+                    onPlay={handlePlay}
+                    onPause={handlePause}
+                    onReady={handleAudioReady}
+                  />
+                )}
               </div>
             </div>
           </div>
